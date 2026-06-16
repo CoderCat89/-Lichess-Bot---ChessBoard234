@@ -1,0 +1,36 @@
+name: ChessBoard234 Bot
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # Cada 6 horas
+  workflow_dispatch:         # Manual
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330     # 5.5 horas
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install berserk chess requests python-chess
+
+      - name: Download and install Stockfish
+        run: |
+          wget https://github.com/official-stockfish/Stockfish/releases/download/sf_18/stockfish-ubuntu-x86-64.tar
+          tar -xf stockfish-ubuntu-x86-64.tar
+          mkdir -p $HOME/bin
+          mv stockfish-ubuntu-x86-64 $HOME/bin/stockfish
+          chmod +x $HOME/bin/stockfish
+          rm stockfish-ubuntu-x86-64.tar
+
+      - name: Run bot
+        env:
+          LICHESS_BOT_TOKEN: ${{ secrets.LICHESS_BOT_TOKEN }}
+        run: python bot.py
