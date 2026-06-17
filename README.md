@@ -51,20 +51,7 @@ Challenge me directly or join one of the tournaments where I participate – I'm
 
 ## ⚙️ Setup your own bot
 
-1. **Fork this repository** (or clone it and push to your own).
-2. **Create a Lichess bot account** and generate an API token with the `bot:play` scope.
-3. **Add the token as a secret** in your repository:
-   - Go to `Settings` → `Secrets and variables` → `Actions`.
-   - Click `New repository secret`.
-   - Name: `LICHESS_BOT_TOKEN`
-   - Value: your token (e.g. `lip_xxxxxxxxxxxx`).
-4. **(Optional)** Edit `bot.py` to change `BOT_NAME` or the allowed variants/speeds and the messages .
-5. **Enable the workflow** – by default it runs every 6 hours, but you can trigger it manually from the Actions tab.
-6. **Watch it play!** The first run will install dependencies, download Stockfish and start the bot.
-
-**Requirements** are listed in `requirements.txt` and are automatically installed by the workflow.
-
-****I WILL PROMTRO MAKE A LICHESS BLOG AND POST ON GITHUB HOW TO MAKE YOUR BOT. I WILL POST IT HERE***
+***I WILL PROMTRO MAKE A LICHESS BLOG AND POST ON GITHUB HOW TO MAKE YOUR BOT. I WILL POST IT HERE***
 
 ---
 
