@@ -5,11 +5,11 @@ from collections import namedtuple
 from datetime import datetime
 
 # ============================================================
-# CONFIGURATION (token from environment)
+# CONFIGURATION (token from environment, name customized)
 # ============================================================
-LICHESS_TOKEN = os.environ.get("LICHESS_BOT_TOKEN")
+LICHESS_TOKEN = os.environ.get("lip_xxxxxxxxxxxx")   # change secret name in GitHub accordingly
 if not LICHESS_TOKEN:
-    print("ERROR - LICHESS_BOT_TOKEN not set.")
+    print("ERROR - Token not set. Add lip_xxxxxxxxxxxx as a GitHub secret.")
     exit(1)
 
 BOT_NAME = "chessboard234"
@@ -100,7 +100,11 @@ RESPUESTAS_RIVAL = [
     "I appreciate the chat, {oponente}. It makes crushin u more enjoyable. Just kiddin... or not. ;)",
     "Shh... I'm thinkin 20 moves ahead. But I can still hear u, {oponente}. ._.",
     "You're funny, {oponente}. But the board is callin. Let's dance! :D",
-    "Note to self: {oponente} talks more than my hash table can store. :o"
+    "Note to self: {oponente} talks more than my hash table can store. :o",
+    "lol {oponente}, that was funny! Now focus, we have a game to finish :P",
+    "gg {oponente}! Oh wait, the game isn't over yet. My bad :D",
+    "Hello {oponente}! I see you're still typing. Less chat, more chess! :>",
+    "U said hi, I say bye... to your pieces! :3 ^^"
 ]
 DESPEDIDAS_RIVAL = [
     "Good game, {oponente}! I really enjoyed it. See u soon! If u hav feedback or find a bug, tell @GatoChess89 :) ._.",
@@ -111,7 +115,10 @@ DESPEDIDAS_RIVAL = [
     "Game over. U were a worthy opponent, {oponente}. Respect! (feedback welcome @GatoChess89) ^^",
     "I have to go now. Goodbye, {oponente}! (tell @GatoChess89 if I did well) :3",
     "Even a bot needs rest. Farewell, {oponente}! (send suggestions to @GatoChess89) ._.",
-    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! :)"
+    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! :)",
+    "Bye {oponente}! That was fun. Remember, feedback goes to @GatoChess89 :D ._.",
+    "gg wp {oponente}! If you found a bug, please tell @GatoChess89 ;)",
+    "lol that was intense! Great game, {oponente}. Feedback? @GatoChess89 :P"
 ]
 SALUDOS_ESPECTADORES = [
     "Ladies and gentlemen, {oponente} has entered the arena. The match is about to start! :D",
@@ -132,7 +139,9 @@ RESPUESTAS_ESPECTADORES = [
     "While {oponente} is chattin, I'm calculatin my next masterpiece. ;)",
     "Spectators, {oponente} thinks they have a chance. Adorable. :o",
     "The crowd goes wild... with laughter at {oponente}'s comment. Just kiddin, I can't hear u. :P",
-    "I'd respond with a witty comeback, but I'm too busy winnin this game. {oponente} understands. ._."
+    "I'd respond with a witty comeback, but I'm too busy winnin this game. {oponente} understands. ._.",
+    "lol did u hear that, spectators? {oponente} is a comedian :D",
+    "Hello audience! {oponente} said something funny. Let's all laugh together :P"
 ]
 DESPEDIDAS_ESPECTADORES = [
     "The game is over! Thank u all for watchin. (feedback to @GatoChess89) :)",
@@ -142,16 +151,19 @@ DESPEDIDAS_ESPECTADORES = [
     "Game over. Thank u to everyone who followed the match. (tell @GatoChess89) ^^",
     "The game has ended. See u soon, spectators! (feedback to @GatoChess89) :3",
     "I'm shuttin down. But remember: chess is beautiful. Goodbye! (tell @GatoChess89) o/",
-    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! ._."
+    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! ._.",
+    "Bye spectators! That was a fun match. Feedback always welcome at @GatoChess89 :D",
+    "gg to everyone watching! Please send your thoughts to @GatoChess89 ;)"
 ]
-# ============================================================
-# COMMAND PROCESSOR (with noob restrictions)
-# ============================================================
+
 COMMANDS_LIST = (
     "Commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
 )
 
+# ============================================================
+# COMMAND PROCESSOR (with noob restriction)
+# ============================================================
 def procesar_comando(texto, oponente, mode, game_info=None):
     t = texto.strip().lower()
     if t.startswith('!'): t = t[1:].strip()
@@ -536,12 +548,28 @@ def obtener_jugada(board, variante, remaining_time, mode):
         moves = antichess_legal_moves(board) if variante=='antichess' else list(board.legal_moves)
         if moves: return random.choice(moves)
         return None
-    if remaining_time is not None and remaining_time<5:
+    if remaining_time is not None and remaining_time < 5:
         moves = antichess_legal_moves(board) if variante=='antichess' else list(board.legal_moves)
         if moves: return random.choice(moves)
         return None
 
-    # 1) Cloud Eval (openings)
+    # Engine time based on clock
+    if remaining_time is None:
+        engine_time = 3.0
+    elif remaining_time >= 120:
+        engine_time = 5.0
+    elif remaining_time >= 90:
+        engine_time = 4.0
+    elif remaining_time >= 60:
+        engine_time = 3.0
+    elif remaining_time >= 30:
+        engine_time = 2.0
+    elif remaining_time >= 10:
+        engine_time = 1.0
+    else:
+        engine_time = 0.5
+
+    # 1) Cloud Eval
     try:
         fen = board.fen(); fen_encoded = quote(fen, safe='')
         url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variante}"
@@ -570,21 +598,21 @@ def obtener_jugada(board, variante, remaining_time, mode):
                 engine.configure({"UCI_Variant": "chess"})
             else:
                 engine.configure({"UCI_Variant": variante})
-            result = engine.play(board, chess.engine.Limit(time=3.0))
+            result = engine.play(board, chess.engine.Limit(time=engine_time))
             if result.move and result.move in board.legal_moves:
-                print("   Local engine")
+                print(f"   Local engine ({engine_time}s)")
                 return result.move
         except Exception as e:
             print(f"   Engine error: {e}")
 
-    # 3) Sunfish (fallback for standard)
+    # 3) Sunfish (standard)
     if variante == 'standard':
         move = sunfish_move(board, remaining_time, mode)
         if move and move in board.legal_moves:
             print("   Sunfish")
             return move
 
-    # 4) Alpha‑beta for other variants
+    # 4) Alpha‑beta for variants
     if variante in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
         depth = 7 if (mode.forced=='slow' or (mode.forced is None and remaining_time and remaining_time>60)) else 6
         move = find_best_move(board, depth, time_limit=2.0)
@@ -807,8 +835,7 @@ def auto_seek():
         except Exception as e:
             print(f"Seek exception: {e}")
         time.sleep(60)
-
-# ============================================================
+        # ============================================================
 # MAIN CONNECTION
 # ============================================================
 session = berserk.TokenSession(LICHESS_TOKEN)
@@ -816,7 +843,7 @@ client = berserk.Client(session)
 
 def decline_challenge_safe(challenge_id):
     try:
-        client.bots.decline_challenge(challenge_id, reason="variant")
+        client.bots.decline_challenge(challenge_id, reason="No me apetece jugar esta modalidad ahora")
     except:
         try: client.bots.decline_challenge(challenge_id)
         except: pass
