@@ -22,37 +22,56 @@ jobs:
         run: pip install berserk chess requests python-chess
 
       - name: Download and install Fairy‑Stockfish
+        shell: bash
         run: |
-          # Download the latest release
-          wget -q https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86_64.tar -O fairy.tar || \
-          wget -q https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86-64.tar -O fairy.tar || \
-          wget -q https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86-64-modern.tar -O fairy.tar || \
-          echo "No tar found"
+          # Try multiple URLs to get the latest Fairy‑Stockfish tar
+          URLS=(
+            "https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86_64.tar"
+            "https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86-64.tar"
+            "https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86-64-modern.tar"
+          )
+          DOWNLOADED=0
+          for url in "${URLS[@]}"; do
+            echo "Trying $url ..."
+            wget -q "$url" -O fairy.tar 2>/dev/null
+            if [ -f fairy.tar ]; then
+              # Check if it's a valid tar
+              if tar -tf fairy.tar &>/dev/null; then
+                echo "Valid tar downloaded."
+                DOWNLOADED=1
+                break
+              else
+                rm -f fairy.tar
+                echo "Downloaded file is not a valid tar. Trying next URL."
+              fi
+            fi
+          done
 
-          if [ -f fairy.tar ]; then
-            tar -xf fairy.tar
-            # Find the largest executable file that contains "fairy" (ignore .tar)
-            BINARIO=$(find . -type f -executable -name "*fairy*" ! -name "*.tar" -print0 | xargs -0 ls -1S 2>/dev/null | head -1)
-            if [ -z "$BINARIO" ]; then
-              # If no executable found, take the largest regular file
-              BINARIO=$(find . -type f -name "*fairy*" ! -name "*.tar" -print0 | xargs -0 ls -1S 2>/dev/null | head -1)
-            fi
-            if [ -n "$BINARIO" ]; then
-              mkdir -p $HOME/bin
-              cp "$BINARIO" $HOME/bin/fairy-stockfish
-              chmod +x $HOME/bin/fairy-stockfish
-              echo "Fairy-Stockfish installed from $BINARIO"
-            else
-              echo "Could not find fairy binary inside the tar"
-              exit 1
-            fi
-            rm fairy.tar
-          else
-            echo "Fairy-Stockfish download failed. Continuing without it."
+          if [ $DOWNLOADED -eq 0 ]; then
+            echo "No valid Fairy‑Stockfish tar found. Continuing without it."
+            exit 0
           fi
+
+          # Extract and find the largest executable named *fairy*
+          tar -xf fairy.tar
+          BINARIO=$(find . -type f -executable -name "*fairy*" ! -name "*.tar" -print0 | xargs -0 ls -1S 2>/dev/null | head -1)
+          if [ -z "$BINARIO" ]; then
+            # fallback: largest regular file containing "fairy"
+            BINARIO=$(find . -type f -name "*fairy*" ! -name "*.tar" -print0 | xargs -0 ls -1S 2>/dev/null | head -1)
+          fi
+
+          if [ -n "$BINARIO" ]; then
+            mkdir -p $HOME/bin
+            cp "$BINARIO" $HOME/bin/fairy-stockfish
+            chmod +x $HOME/bin/fairy-stockfish
+            echo "Fairy‑Stockfish installed from $BINARIO"
+          else
+            echo "Could not find fairy binary inside the tar. Continuing without it."
+          fi
+          rm -f fairy.tar
 
       - name: Run the bot
         env:
-          LICHESS_BOT_TOKEN: ${{ secrets.LICHESS_BOT_TOKEN }}
+          LICHESS_BOT_TOKEN: ${{ secrets.lip_xxxxxxxxxxxx }}   # <-- usa el nombre de tu secreto real
           SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
         run: python bot.py
