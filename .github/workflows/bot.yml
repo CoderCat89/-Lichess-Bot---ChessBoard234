@@ -2,13 +2,13 @@ name: ChessBoard234 Bot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 359     # 5h 59m, so only ~1 min gap between runs
 
     steps:
       - uses: actions/checkout@v4
@@ -18,25 +18,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: pip install berserk chess requests python-chess
 
-      - name: Download and install Stockfish
+      - name: Download and install Fairy‑Stockfish
         run: |
-          wget https://github.com/official-stockfish/Stockfish/releases/download/sf_18/stockfish-ubuntu-x86-64.tar
-          tar -xf stockfish-ubuntu-x86-64.tar
-          # Buscar el binario más grande que contenga "stockfish" (puede estar en una carpeta)
-          BINARIO=$(find . -type f -name "*stockfish*" -size +1M | head -1)
-          if [ -z "$BINARIO" ]; then
-            echo "No se encontró el binario de Stockfish"
-            exit 1
-          fi
+          wget https://github.com/ianfab/Fairy-Stockfish/releases/latest/download/fairy-stockfish-linux-x86-64.tar
+          tar -xf fairy-stockfish-linux-x86-64.tar
           mkdir -p $HOME/bin
-          cp "$BINARIO" $HOME/bin/stockfish
-          chmod +x $HOME/bin/stockfish
-          rm stockfish-ubuntu-x86-64.tar
+          mv fairy-stockfish $HOME/bin/fairy-stockfish
+          chmod +x $HOME/bin/fairy-stockfish
+          rm fairy-stockfish-linux-x86-64.tar
 
-      - name: Run bot
+      - name: Run the bot
         env:
           LICHESS_BOT_TOKEN: ${{ secrets.LICHESS_BOT_TOKEN }}
+          SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
         run: python bot.py
