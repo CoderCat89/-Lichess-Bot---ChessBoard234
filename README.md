@@ -31,7 +31,7 @@ ChessBoard234 can play **Standard, Chess960, Atomic, Crazyhouse, Racing Kings, A
 ## ✨ Features
 
 - **7 supported variants**: Standard, Chess960, Atomic, Crazyhouse, Racing Kings, Antichess, Three‑check.
-- **Stockfish 18 engine** (depth 12) – ~2800 ELO on Lichess.
+- **Stockfish 18 engine** (depth 25) – ~3500+ ELO on Lichess.
 - **Cloud Eval** for instant opening moves.
 - **Automatic seeks** – challenges other bots every 60 seconds.
 - **Team tournaments** – automatically joins arenas from several teams (daily‑bot‑tournaments, core‑chess‑study, darkonbot, growing‑chess‑variants‑masters).
