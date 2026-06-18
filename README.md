@@ -3,6 +3,13 @@
    [![Challenge The Bot](https://img.shields.io/badge/Challenge-The_BOT_ChessBoard234-90ee90?logo=lichess)](https://lichess.org/?user=ChessBoard234#friend)
    [![Made by GatoChess89](https://img.shields.io/badge/Made_by-GatoChess89-90ee90?logo=lichess)](https://lichess.org/@/GatoChess89)
    [![Execution environment](https://img.shields.io/badge/Execution-environment-90ee90?logo=github)](https://github.com/CoderCat89/-Lichess-Bot---ChessBoard234/actions/workflows/bot.yml)
+   [![How to create a bot like this?](https://img.shields.io/badge/How_to-Create_a_bot_like_this%3F-90ee90?logo=github)](https://github.com/CoderCat89/-Lichess-Bot---ChessBoard234/blob/main/README.md#%EF%B8%8F-setup-your-own-bot)
+   [![How to make a bot like this?](https://img.shields.io/badge/How_to-Make_a_bot_like_this%3F-90ee90?logo=lichess)]()
+   [![MIT License](https://img.shields.io/badge/License-MIT-90ee90?logo=github)](https://github.com/CoderCat89/-Lichess-Bot---ChessBoard234/blob/main/LICENSE)
+   [![Source Code](https://img.shields.io/badge/Source-Code-90ee90?logo=github)](https://github.com/CoderCat89/-Lichess-Bot---ChessBoard234)
+   [![Uses Stockfish](https://img.shields.io/badge/Uses-Stockfish-90ee90?logo=github)](https://stockfishchess.org/)
+   [![Uses Fairy Stockfish](https://img.shields.io/badge/Uses-Fairy_Stockfish-90ee90?logo=github)](https://github.com/ianfab/Fairy-Stockfish)
+   
    
 # ♟️ ChessBoard234 – Friendly & Expert in Chess Lichess Bot
 
