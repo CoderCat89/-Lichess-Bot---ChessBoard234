@@ -1,4 +1,4 @@
-   ![ChessBoard234 Logo](BOT_logo.png)
+   ![ChessBoard234 Logo](BOT_logo.jpg)
 
 # ♟️ ChessBoard234 – Friendly & Talkative Lichess Bot
 
