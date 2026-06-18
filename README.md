@@ -45,6 +45,7 @@ Challenge me directly or join one of the tournaments where I participate – I'm
 - **[berserk](https://github.com/lichess-org/berserk)** – official Python client for the Lichess API.
 - **[python‑chess](https://python-chess.readthedocs.io)** – board representation and move generation.
 - **Stockfish 18** – downloaded automatically inside the GitHub Actions runner.
+- **Fairy‑Stockfish** – a Stockfish derivative that supports all chess variants used by the bot.
 - **GitHub Actions** – free, unlimited cloud CI/CD for public repositories.
 
 ---
@@ -138,7 +139,7 @@ The workflow (`.github/workflows/bot.yml`) does the following:
 2. Checks out the code.
 3. Installs Python 3.11 and the required libraries.
 4. Downloads and extracts Stockfish 18.
-5. Runs the bot for up to 5.5 hours (330 minutes).
+5. Runs the bot for up to 5.9 hours (359 minutes).
 6. After that time, GitHub automatically stops the job, and the next scheduled run will start fresh.
 
 Because public repositories have **unlimited GitHub Actions minutes**, the bot can run almost continuously without any cost.
