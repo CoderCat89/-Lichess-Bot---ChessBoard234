@@ -1,6 +1,6 @@
    ![ChessBoard234 Logo](BOT_logo.jpg)
    
-    [![Challenge The Bot](https://img.shields.io/badge/Challenge-The_BOT_ChessBoard234-90ee90?logo=lichess)](https://lichess.org/?user=ChessBoard234#friend)
+   [![Challenge The Bot](https://img.shields.io/badge/Challenge-The_BOT_ChessBoard234-90ee90?logo=lichess)](https://lichess.org/?user=ChessBoard234#friend)
 # ♟️ ChessBoard234 – Friendly & Talkative Lichess Bot
 
 **Created by [GatoChess89](https://lichess.org/@/GatoChess89)**
