@@ -816,7 +816,7 @@ client = berserk.Client(session)
 
 def decline_challenge_safe(challenge_id):
     try:
-        client.bots.decline_challenge(challenge_id, reason="No me apetece jugar esta modalidad ahora")
+        client.bots.decline_challenge(challenge_id, reason="variant")
     except:
         try: client.bots.decline_challenge(challenge_id)
         except: pass
@@ -849,4 +849,3 @@ while True:
     except Exception as e:
         print(f"Reconnecting... ({type(e).__name__})")
         time.sleep(5)
-    
