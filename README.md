@@ -1,5 +1,5 @@
    ![ChessBoard234 Logo](BOT_logo.jpg)
-
+[![Play with @ChessBoard234](https://img.shields.io/badge/Play_with-@ChessBoard234-90ee90?logo=lichess)](https://lichess.org/@/ChessBoard234)
 # ♟️ ChessBoard234 – Friendly & Talkative Lichess Bot
 
 **Created by [GatoChess89](https://lichess.org/@/GatoChess89)**
