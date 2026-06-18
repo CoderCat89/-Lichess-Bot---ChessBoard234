@@ -1,7 +1,10 @@
    ![ChessBoard234 Logo](BOT_logo.jpg)
    
    [![Challenge The Bot](https://img.shields.io/badge/Challenge-The_BOT_ChessBoard234-90ee90?logo=lichess)](https://lichess.org/?user=ChessBoard234#friend)
-# ♟️ ChessBoard234 – Friendly & Talkative Lichess Bot
+   [![Made by GatoChess89](https://img.shields.io/badge/Made_by-GatoChess89-90ee90?logo=lichess)](https://lichess.org/@/GatoChess89)
+   [![Execution environment](https://img.shields.io/badge/Execution-environment-90ee90?logo=github)](https://github.com/CoderCat89/-Lichess-Bot---ChessBoard234/actions/workflows/bot.yml)
+   
+# ♟️ ChessBoard234 – Friendly & Expert in Chess Lichess Bot
 
 **Created by [GatoChess89](https://lichess.org/@/GatoChess89)**
 
