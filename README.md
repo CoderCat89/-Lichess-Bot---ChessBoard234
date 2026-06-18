@@ -45,7 +45,7 @@ Challenge me directly or join one of the tournaments where I participate – I'm
 - **[berserk](https://github.com/lichess-org/berserk)** – official Python client for the Lichess API.
 - **[python‑chess](https://python-chess.readthedocs.io)** – board representation and move generation.
 - **Stockfish 18** – downloaded automatically inside the GitHub Actions runner.
-- **Fairy‑Stockfish** – a Stockfish derivative that supports all chess variants used by the bot.
+-  **[Fairy‑Stockfish](https://github.com/ianfab/Fairy-Stockfish)**  – a Stockfish derivative that supports all chess variants used by the bot.
 - **GitHub Actions** – free, unlimited cloud CI/CD for public repositories.
 
 ---
