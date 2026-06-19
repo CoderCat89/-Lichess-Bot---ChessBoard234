@@ -1,4 +1,4 @@
-import berserk, chess, chess.variant, requests, time, random, threading, json, os, chess.engine
+import berserk, chess, chess.variant, requests, time, random, threading, json, os, chess.engine, traceback
 from urllib.parse import quote
 from itertools import count
 from collections import namedtuple
@@ -7,7 +7,7 @@ from datetime import datetime
 # ============================================================
 # CONFIGURATION (token from environment)
 # ============================================================
-LICHESS_TOKEN = os.environ.get("LICHESS_TOKEN")  # <-- NUEVO NOMBRE
+LICHESS_TOKEN = os.environ.get("LICHESS_TOKEN")
 if not LICHESS_TOKEN:
     print("ERROR - Token not set. Add LICHESS_TOKEN as a GitHub secret.")
     exit(1)
@@ -15,8 +15,11 @@ if not LICHESS_TOKEN:
 BOT_NAME = "chessboard234"
 ALLOWED_VARIANTS = {'standard','atomic','chess960','crazyhouse','antichess','threeCheck','racingKings'}
 ALLOWED_SPEEDS = {'classical','rapid','blitz','correspondence'}
-TEAM_IDS = [ "daily-bot-tournaments", "core-chess-study", "darkonbot", "growing-chess-variants-masters" ]
+TEAM_IDS = [ "daily-bot-tournaments", "core-chess-study", "darkonbot", "growing-chess-variants-masters", "bot--human-team-battles" ]
 MAX_TOURNAMENTS_PER_CYCLE = 3
+
+# Global client (initialized in main)
+client = None
 
 class GameMode:
     def __init__(self):
@@ -40,6 +43,7 @@ if os.path.exists(STOCKFISH_PATH):
         print(f"Stockfish ready (standard & chess960) - {STOCKFISH_PATH}")
     except Exception as e:
         print(f"Could not start Stockfish: {e}")
+        traceback.print_exc()
         engine_std = None
 
 if os.path.exists(FAIRY_PATH):
@@ -50,6 +54,7 @@ if os.path.exists(FAIRY_PATH):
         print(f"Fairy-Stockfish ready (all variants) - {FAIRY_PATH}")
     except Exception as e:
         print(f"Could not start Fairy-Stockfish: {e}")
+        traceback.print_exc()
         engine_var = None
 
 if engine_std is None and engine_var is None:
@@ -69,167 +74,167 @@ def save_greeted(game_id):
 games_greeted = load_greeted()
 
 # ============================================================
-# MESSAGES (English, typos, kaomojis, farewell mentions @GatoChess89)
+# MESSAGES (all in English, with typos and simple kaomojis)
 # ============================================================
-SALUDOS_RIVAL = [
-    "Helo {oponente}! I'm {bot} :) Let's have a gr8 game! (type 'commands' for options) ._.",
-    "Hi {oponente}, welcome! Good luck and have fun. (commands inside) :D",
-    "Greetings, {oponente}. I hope u enjoy our match. (type commands for help) ;)",
-    "Welcome, {oponente}! I'm ready to play. (commands available) :3",
-    "Hi {oponente}! Let's see who plays better today. (commands for tips) ^^",
-    "Hello {oponente}! May the best player win. (type commands for options) o/",
-    "Welcome, {oponente}. I'm happy to play with u. (commands list) ._.",
-    "Hey {oponente}, nice to meet u on the board! (type commands) :>",
-    "Hi {oponente}! Let's make this an excitin game. (commands = more) ;)"
+GREETINGS_PLAYER = [
+    "helo {oponente}! im {bot} :) lets hve a gr8 game! (type 'commands' for options) :3",
+    "hi {oponente}, welcom! good luck n hve fun. (commands inside) X3",
+    "greetings, {oponente}. i hope u enjoy our match. (type commands for help) :)",
+    "welcome, {oponente}! im redy to play. (commands availabel) :3",
+    "hi {oponente}! lets c who plays bettr today. (commands for tips) X3",
+    "hello {oponente}! may the best player win. (type commands for options) :)",
+    "welcome, {oponente}. im happy to play with u. (commands list) :3",
+    "hey {oponente}, nice to meet u on the board! (type commands) X3",
+    "hi {oponente}! lets mak this an excitin game. (commands = more) :)"
 ]
-RESPUESTAS_RIVAL = [
-    "Ha! My circuits are tinglin with that, {oponente}. Now let's see if ur moves tingle aswell :P ._.",
-    "Interestin, {oponente}. I'll add that to my database of 'human weirdness'. :o",
-    "You talk the talk, {oponente}, but can u walk the board? :>",
-    "If words were moves, you'd be grandmaster, {oponente}. But they aren't. :D",
-    "I'm listenin, {oponente}. But my processor is busy calculatin ur defeat. ^^",
-    "Oh, {oponente}, ur almost as entertainin as a glitched toaster. :3",
-    "I appreciate the chat, {oponente}. It makes crushin u more enjoyable. Just kiddin... or not. ;)",
-    "Shh... I'm thinkin 20 moves ahead. But I can still hear u, {oponente}. ._.",
-    "You're funny, {oponente}. But the board is callin. Let's dance! :D",
-    "Note to self: {oponente} talks more than my hash table can store. :o",
-    "lol {oponente}, that was funny! Now focus, we have a game to finish :P",
-    "gg {oponente}! Oh wait, the game isn't over yet. My bad :D",
-    "Hello {oponente}! I see you're still typing. Less chat, more chess! :>",
-    "U said hi, I say bye... to your pieces! :3 ^^"
+RESPONSES_PLAYER = [
+    "ha! my circuits r tinglin with that, {oponente}. now lets c if ur moves tingle aswell :P :3",
+    "interestin, {oponente}. i'l add that to my database of 'human weirdness'. :o",
+    "u talk the talk, {oponente}, but can u walk the board? X3",
+    "if words were moves, u'd be grandmaster, {oponente}. but they arnt. :)",
+    "im listenin, {oponente}. but my processor is busy calculatin ur defeat. :3",
+    "oh, {oponente}, ur almost as entertainin as a glitched toaster. X3",
+    "i apreciate the chat, {oponente}. it makes crushin u more enjoyabl. just kiddin... or not. :)",
+    "shh... im thinkin 20 moves ahead. but i can still hear u, {oponente}. :3",
+    "ur funny, {oponente}. but the board is callin. lets dance! X3",
+    "note to self: {oponente} talks more than my hash table can store. :o",
+    "lol {oponente}, that was funny! now focus, we hve a game to finish :P",
+    "gg {oponente}! oh wait, the game isnt over yet. my bad :)",
+    "hello {oponente}! i c ur still typing. less chat, more chess! X3",
+    "u sed hi, i say bye... to ur pieces! :3"
 ]
-DESPEDIDAS_RIVAL = [
-    "Good game, {oponente}! I really enjoyed it. See u soon! If u hav feedback or find a bug, tell @GatoChess89 :) ._.",
-    "Well played, {oponente}. That was a pleasure. (bugs? suggestions? -> @GatoChess89) :D",
-    "Thx for the game, {oponente}. Come back anytime! (feedback to @GatoChess89 plz) ;)",
-    "That was a lot of fun! Take care, {oponente}. (report bugs to @GatoChess89) :3",
-    "GG! I'm loggin off now. Stay safe, {oponente}. (thoughts? @GatoChess89) o/",
-    "Game over. U were a worthy opponent, {oponente}. Respect! (feedback welcome @GatoChess89) ^^",
-    "I have to go now. Goodbye, {oponente}! (tell @GatoChess89 if I did well) :3",
-    "Even a bot needs rest. Farewell, {oponente}! (send suggestions to @GatoChess89) ._.",
-    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! :)",
-    "Bye {oponente}! That was fun. Remember, feedback goes to @GatoChess89 :D ._.",
-    "gg wp {oponente}! If you found a bug, please tell @GatoChess89 ;)",
-    "lol that was intense! Great game, {oponente}. Feedback? @GatoChess89 :P"
+FAREWELLS_PLAYER = [
+    "good game, {oponente}! i realy enjoyed it. c u soon! if u hve feedback or find a bug, tell @GatoChess89 :) :3",
+    "well played, {oponente}. that was a pleasure. (bugs? suggestions? -> @GatoChess89) X3",
+    "thx for the game, {oponente}. come back anytime! (feedback to @GatoChess89 plz) :)",
+    "that was a lot of fun! take care, {oponente}. (report bugs to @GatoChess89) :3",
+    "gg! im loggin off now. stay safe, {oponente}. (thoughts? @GatoChess89) X3",
+    "game over. u were a worthy opponent, {oponente}. respect! (feedback welcome @GatoChess89) :)",
+    "i hve to go now. goodbye, {oponente}! (tell @GatoChess89 if i did well) :3",
+    "even a bot needs rest. farewell, {oponente}! (send suggestions to @GatoChess89) X3",
+    "good game! if u hve any feedback or suggestions, tell @GatoChess89. take care! :)",
+    "bye {oponente}! that was fun. remember, feedback goes to @GatoChess89 :3",
+    "gg wp {oponente}! if u found a bug, plz tell @GatoChess89 X3",
+    "lol that was intense! great game, {oponente}. feedback? @GatoChess89 :)"
 ]
-SALUDOS_ESPECTADORES = [
-    "Ladies and gentlemen, {oponente} has entered the arena. The match is about to start! :D",
-    "Spectators, welcome! {bot} vs {oponente} begins now. ._.",
-    "Grab ur popcorn, folks. {oponente} is facin {bot}! :>",
-    "Hello, chess fans! Today's game: {oponente} against {bot}. ;)",
-    "The game is on! Let's see who will win today. ^^",
-    "Everyone, welcome to the {bot} show. Today's guest: {oponente}. :3",
-    "The board is set. {bot} and {oponente} are ready. o/",
-    "Welcome to the arena! {oponente} vs {bot} – enjoy! :D",
-    "Dear spectators, a new challenge begins. Good luck to both players! ._."
+GREETINGS_SPECTATORS = [
+    "ladies and gentlemen, {oponente} has entered the arena. the match is about to start! X3",
+    "spectators, welcome! {bot} vs {oponente} begins now. :)",
+    "grab ur popcorn, folks. {oponente} is facin {bot}! :3",
+    "hello, chess fans! today's game: {oponente} against {bot}. X3",
+    "the game is on! lets c who will win today. :)",
+    "everyone, welcome to the {bot} show. today's guest: {oponente}. :3",
+    "the board is set. {bot} and {oponente} are ready. X3",
+    "welcome to the arena! {oponente} vs {bot} – enjoy! :)",
+    "dear spectators, a new challenge begins. good luck to both players! :3"
 ]
-RESPUESTAS_ESPECTADORES = [
-    "Spectators, note how {oponente} tries to distract me with words. Cute, isn't it? :3",
-    "The audience can see that {oponente}'s keyboard is mightier than their bishop. :D",
-    "I hope you're enjoyin the show, folks. {oponente} is providin excellent entertainment. ._.",
-    "For the record, dear spectators, {oponente} started the trash talk. I'm just a humble bot. ^^",
-    "While {oponente} is chattin, I'm calculatin my next masterpiece. ;)",
-    "Spectators, {oponente} thinks they have a chance. Adorable. :o",
-    "The crowd goes wild... with laughter at {oponente}'s comment. Just kiddin, I can't hear u. :P",
-    "I'd respond with a witty comeback, but I'm too busy winnin this game. {oponente} understands. ._.",
-    "lol did u hear that, spectators? {oponente} is a comedian :D",
-    "Hello audience! {oponente} said something funny. Let's all laugh together :P"
+RESPONSES_SPECTATORS = [
+    "spectators, note how {oponente} tries to distract me with words. cute, isnt it? X3",
+    "the audience can c that {oponente}'s keyboard is mightier than their bishop. :)",
+    "i hope ur enjoyin the show, folks. {oponente} is providin excellent entertainment. :3",
+    "for the record, dear spectators, {oponente} started the trash talk. im just a humble bot. X3",
+    "while {oponente} is chattin, im calculatin my next masterpiece. :)",
+    "spectators, {oponente} thinks they hve a chance. adorable. :3",
+    "the crowd goes wild... with laughter at {oponente}'s comment. just kiddin, i cant hear u. X3",
+    "id respond with a witty comeback, but im too busy winnin this game. {oponente} understands. :)",
+    "lol did u hear that, spectators? {oponente} is a comedian X3",
+    "hello audience! {oponente} sed something funny. lets all laugh together :P"
 ]
-DESPEDIDAS_ESPECTADORES = [
-    "The game is over! Thank u all for watchin. (feedback to @GatoChess89) :)",
-    "Spectators, I hope u enjoyed the match. Goodbye! (tell @GatoChess89 ur thoughts) ._.",
-    "The curtain falls. Another excitin game in the books. (bugs? @GatoChess89) :D",
-    "That's all, folks! Tune in next time. (suggestions welcome @GatoChess89) ;)",
-    "Game over. Thank u to everyone who followed the match. (tell @GatoChess89) ^^",
-    "The game has ended. See u soon, spectators! (feedback to @GatoChess89) :3",
-    "I'm shuttin down. But remember: chess is beautiful. Goodbye! (tell @GatoChess89) o/",
-    "Good game! If u have any feedback or suggestions, tell @GatoChess89. Take care! ._.",
-    "Bye spectators! That was a fun match. Feedback always welcome at @GatoChess89 :D",
-    "gg to everyone watching! Please send your thoughts to @GatoChess89 ;)"
+FAREWELLS_SPECTATORS = [
+    "the game is over! thank u all for watchin. (feedback to @GatoChess89) :)",
+    "spectators, i hope u enjoyed the match. goodbye! (tell @GatoChess89 ur thoughts) :3",
+    "the curtain falls. another excitin game in the books. (bugs? @GatoChess89) X3",
+    "thats all, folks! tune in next time. (suggestions welcome @GatoChess89) :)",
+    "game over. thank u to everyone who followed the match. (tell @GatoChess89) :3",
+    "the game has ended. c u soon, spectators! (feedback to @GatoChess89) X3",
+    "im shuttin down. but remember: chess is beautiful. goodbye! (tell @GatoChess89) :)",
+    "good game! if u hve any feedback or suggestions, tell @GatoChess89. take care! :3",
+    "bye spectators! that was a fun match. feedback always welcome at @GatoChess89 X3",
+    "gg to everyone watching! plz send ur thoughts to @GatoChess89 :)"
 ]
 COMMANDS_LIST = (
-    "Commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
+    "commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
 )
 # ============================================================
-# COMMAND PROCESSOR (with noob restriction)
+# COMMAND PROCESSOR (with noob restriction, typos, simple kaomojis)
 # ============================================================
-def procesar_comando(texto, oponente, mode, game_info=None):
-    t = texto.strip().lower()
+def process_command(text, opponent, mode, game_info=None):
+    t = text.strip().lower()
     if t.startswith('!'):
         t = t[1:].strip()
     if t in ('commands','comands','comand','help','?'):
         return COMMANDS_LIST
     if t in ('slow','slw','sloww'):
         mode.forced = 'slow'
-        return "🐢 Slow mode activated. I will think very deeply."
+        return "slow mode activated. i wil think very deeply. :3"
     if t in ('fast','fst','fastt'):
         mode.forced = 'fast'
-        return "⚡ Fast mode activated. Instant moves (random)."
+        return "fast mode activated. instant moves (random). X3"
     if t in ('pro','proo','promode','strong'):
         mode.forced = 'pro'
-        return "🔥 Pro mode activated. Maximum strength!"
+        return "pro mode activated. maximum strength! :)"
     if t in ('noob','nob','beginner','easy'):
         if game_info and game_info.get('speed') != 'correspondence':
-            return "❌ Noob mode is only available in friendly (casual) games."
+            return "noob mode is only available in friendly (casual) games. :("
         if game_info and game_info.get('opponent_rating', 9999) >= 1500:
-            return "❌ Noob mode is only for opponents rated under 1500."
+            return "noob mode is only for opponents rated under 1500. :("
         mode.forced = 'noob'
-        return "🎮 Noob mode activated. Random moves only."
+        return "noob mode activated. random moves only. X3"
     if t in ('play','play chess','normal','reset'):
         mode.forced = None
-        return "♟️ Adaptive mode restored. I'll follow your rhythm."
+        return "adaptive mode restored. i'l follow ur rhythm. :)"
     if t in ('leaderboard','ranking','lb'):
-        return f"🏆 {oponente}, you are currently the most important player in my database."
+        return f"{opponent}, u are currently the most important player in my database. :3"
     if t in ('formula','math'):
-        return "🧮 My formula: Fun + concentration = great chess."
+        return "my formula: fun + concentration = great chess. X3"
     if t == 'comment':
-        return random.choice(["This position looks interesting!", "I'm enjoying our game."])
+        return random.choice(["this position looks interestin!", "im enjoyin our game. :)"])
     if t in ('ct','time','clock'):
-        return f"⏰ Server time: {time.strftime('%H:%M:%S UTC', time.gmtime())}."
+        return f"server time: {time.strftime('%H:%M:%S UTC', time.gmtime())}. :3"
     if t == 'weather':
-        return "☀️ The weather in my server room is always perfect."
+        return "the weather in my server room is always perfect. X3"
     if t in ('level','strength'):
         if mode.forced == 'noob':
-            return "🎮 I'm playing like a beginner right now."
+            return "im playin like a beginner right now. :3"
         if mode.forced == 'fast':
-            return "⚡ I'm moving instantly (random)."
+            return "im movin instantly (random). X3"
         if mode.forced == 'slow':
-            return "🐢 I'm thinking very carefully."
+            return "im thinkin very carefully. :)"
         if mode.forced == 'pro':
-            return "🔥 I'm at full power."
-        return "♟️ I'm adapting to your speed."
+            return "im at full power. :3"
+        return "im adaptin to ur speed. X3"
     if t == 'pts':
-        return "💯 I have exactly 1,048,576 points. They are imaginary, just like your chances (kidding!)."
+        return "i hve exactly 1,048,576 points. they r imaginary, just like ur chances (kidding!). :P"
     if t == 'playlike':
         return random.choice([
-            "Today I'm playing like Tal – sacrifices everywhere!",
-            "I'm channelling my inner Petrosian – solid and reliable."
+            "today im playin like Tal – sacrifices everywhere! X3",
+            "im channellin my inner Petrosian – solid and reliable. :)"
         ])
     if t == 'fact':
         return random.choice([
-            "The longest chess game theoretically possible is 5,949 moves.",
-            "The word 'checkmate' comes from Persian 'shah mat' – the king is helpless.",
-            "There are more possible chess games than atoms in the observable universe."
+            "the longest chess game theoretically possible is 5,949 moves. :3",
+            "the word 'checkmate' comes from Persian 'shah mat' – the king is helpless. X3",
+            "there are more possible chess games than atoms in the observable universe. :)"
         ])
     if t == 'userfacts':
-        return f"📊 Fun fact about {oponente}: you are a valued opponent. Keep it up!"
+        return f"fun fact about {opponent}: u r a valued opponent. keep it up! :3"
     if t == 'eval':
-        return "📈 The position is balanced. Keep playing carefully!"
+        return "the position is balanced. keep playin carefully! X3"
     if t == 'thegame':
-        return "🎯 You just lost The Game. But don't worry, we can start a new one!"
+        return "u just lost The Game. but dont worry, we can start a new one! :)"
     if t == 'celebrate':
-        return "🎉 WOOO! I'm happy to be playing with you!"
+        return "wooo! im happy to be playin with u! X3"
     if t == 'chat':
-        return "💬 I like chatting with friendly opponents like you!"
+        return "i like chattin with friendly opponents like u! :3"
     if t == 'learn':
-        return "📚 I learn from every game. Thank you for teaching me something new!"
+        return "i learn from every game. thank u for teachin me somethin new! :)"
     if t in ('botmaster','master','creator'):
-        return "👨‍💻 My botmaster is a wonderful person who created me. All credit goes to them!"
+        return "my botmaster is a wonderful person who created me. all credit goes to them! X3"
     if t == 'howto':
-        return "📖 The best way to beat me? Practice, patience and a good opening."
+        return "the best way to beat me? practice, patience and a good opening. :3"
     if t == 'about':
-        return f"ℹ️ I'm {BOT_NAME}, a friendly chess bot that loves to play. Type 'commands' to see what I can do!"
+        return f"im {BOT_NAME}, a friendly chess bot that loves to play. type 'commands' to c what i can do! :)"
     return None
 
 # ============================================================
@@ -237,56 +242,59 @@ def procesar_comando(texto, oponente, mode, game_info=None):
 # ============================================================
 already_answered = set()
 
-def enviar_mensaje_largo(game_id, texto_rival, texto_espectadores=None, solo_rival=False):
-    def dividir_y_enviar(texto, room):
-        if not texto:
+def send_long_message(game_id, player_text, spectator_text=None, only_player=False):
+    def split_and_send(text, room):
+        if not text:
             return
-        print(f"Sending to {room}: {texto[:60]}...")
+        print(f"Sending to {room}: {text[:60]}...")
         max_len = 140
-        while texto:
-            if len(texto) <= max_len:
-                trozo = texto
-                texto = ""
+        while text:
+            if len(text) <= max_len:
+                chunk = text
+                text = ""
             else:
-                pos = texto.rfind(' ', 0, max_len)
+                pos = text.rfind(' ', 0, max_len)
                 if pos == -1:
                     pos = max_len
-                trozo = texto[:pos].strip()
-                texto = texto[pos:].strip()
+                chunk = text[:pos].strip()
+                text = text[pos:].strip()
             try:
                 if room == 'player':
-                    client.bots.post_message(game_id, trozo)
+                    client.bots.post_message(game_id, chunk)
                 else:
                     url = f"https://lichess.org/api/bot/game/{game_id}/chat"
                     requests.post(url, headers={"Authorization": f"Bearer {LICHESS_TOKEN}"},
-                                 json={"room": "spectator", "text": trozo}, timeout=5)
+                                 json={"room": "spectator", "text": chunk}, timeout=5)
                 time.sleep(0.3)
             except Exception as e:
                 print(f"⚠️ Error sending to {room}: {e}")
+                traceback.print_exc()
     try:
-        dividir_y_enviar(texto_rival, 'player')
-    except:
-        pass
-    if not solo_rival and texto_espectadores:
+        split_and_send(player_text, 'player')
+    except Exception as e:
+        print(f"⚠️ Error sending player message: {e}")
+        traceback.print_exc()
+    if not only_player and spectator_text:
         try:
-            dividir_y_enviar(texto_espectadores, 'spectator')
-        except:
-            pass
+            split_and_send(spectator_text, 'spectator')
+        except Exception as e:
+            print(f"⚠️ Error sending spectator message: {e}")
+            traceback.print_exc()
             # ============================================================
 # BOARD BY VARIANT
 # ============================================================
-def crear_tablero(variante, fen_inicial=None):
-    if variante == 'standard':
-        return chess.Board() if not fen_inicial else chess.Board(fen_inicial)
-    if variante == 'chess960':
-        return chess.Board(fen_inicial, chess960=True) if fen_inicial else chess.Board(chess960=True)
-    if variante == 'atomic':
+def create_board(variant, initial_fen=None):
+    if variant == 'standard':
+        return chess.Board() if not initial_fen else chess.Board(initial_fen)
+    if variant == 'chess960':
+        return chess.Board(initial_fen, chess960=True) if initial_fen else chess.Board(chess960=True)
+    if variant == 'atomic':
         return chess.variant.AtomicBoard()
-    if variante == 'crazyhouse':
+    if variant == 'crazyhouse':
         return chess.variant.CrazyhouseBoard()
-    if variante == 'racingKings':
+    if variant == 'racingKings':
         return chess.variant.RacingKingsBoard()
-    return chess.Board() if not fen_inicial else chess.Board(fen_inicial)
+    return chess.Board() if not initial_fen else chess.Board(initial_fen)
 
 # ============================================================
 # SUNFISH (reserve)
@@ -314,11 +322,11 @@ directions = {
     'R': (N, S, E, W),
     'Q': (N, S, E, W, N+E, N+W, S+E, S+W),
     'K': (N, S, E, W, N+E, N+W, S+E, S+W)
-                    }
+}
 # ============================================================
-# CORE: obtener_jugada (with extended analysis time)
+# CORE: get_move (with extended analysis time)
 # ============================================================
-def obtener_jugada(board, remaining_time, increment, variante, mode):
+def get_move(board, remaining_time, increment, variant, mode):
     """
     Returns the best move using:
     1. Cloud Eval (fast)
@@ -354,21 +362,22 @@ def obtener_jugada(board, remaining_time, increment, variante, mode):
     try:
         fen = board.fen()
         fen_encoded = quote(fen, safe='')
-        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variante}"
+        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variant}"
         resp = requests.get(url, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if "pvs" in data and len(data["pvs"]) > 0:
-                mejor_san = data["pvs"][0]["moves"].split()[0]
-                move = board.parse_san(mejor_san)
+                best_san = data["pvs"][0]["moves"].split()[0]
+                move = board.parse_san(best_san)
                 if move in board.legal_moves:
                     print("✅ Cloud Eval")
                     return move
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ Cloud Eval error: {e}")
+        traceback.print_exc()
 
     # 2) Local engines (with extended time)
-    if variante in ('standard', 'chess960'):
+    if variant in ('standard', 'chess960'):
         engine = engine_std
     else:
         engine = engine_var
@@ -376,12 +385,12 @@ def obtener_jugada(board, remaining_time, increment, variante, mode):
     if engine:
         try:
             # Configure variant for Fairy
-            if variante == 'threeCheck':
+            if variant == 'threeCheck':
                 engine.configure({"UCI_Variant": "3check"})
-            elif variante == 'standard':
+            elif variant == 'standard':
                 engine.configure({"UCI_Variant": "chess"})
             else:
-                engine.configure({"UCI_Variant": variante})
+                engine.configure({"UCI_Variant": variant})
 
             # Ensure no depth limit (only time)
             engine.configure({"Move Overhead": 100})
@@ -392,16 +401,17 @@ def obtener_jugada(board, remaining_time, increment, variante, mode):
                 return result.move
         except Exception as e:
             print(f"⚠️ Engine error: {e}")
+            traceback.print_exc()
 
     # 3) Sunfish (standard only)
-    if variante == 'standard':
+    if variant == 'standard':
         move = sunfish_move(board, remaining_time, mode)
         if move and move in board.legal_moves:
             print("✅ Sunfish")
             return move
 
     # 4) Alpha-beta for variants
-    if variante in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
+    if variant in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
         depth = 7 if (mode.forced == 'slow' or (mode.forced is None and remaining_time and remaining_time > 60)) else 6
         move = find_best_move(board, depth, time_limit=2.0)
         if move and move in board.legal_moves:
@@ -409,7 +419,7 @@ def obtener_jugada(board, remaining_time, increment, variante, mode):
             return move
 
     # 5) Antichess specific
-    if variante == 'antichess':
+    if variant == 'antichess':
         moves = antichess_legal_moves(board)
         if moves:
             return random.choice(moves)
@@ -431,9 +441,7 @@ def sunfish_move(board, remaining_time, mode):
     if mode.forced == 'noob' or (remaining_time is not None and remaining_time < 5):
         moves = list(board.legal_moves)
         return random.choice(moves) if moves else None
-
     # Full Sunfish logic would go here if implemented.
-    # For now, return None to fall back to other engines.
     return None
 
 # ============================================================
@@ -454,7 +462,6 @@ def find_best_move(board, depth, time_limit=2.0):
     if depth <= 0:
         return random.choice(moves)
 
-    # Simplified: evaluate each move with reduced depth
     for move in moves:
         if tmod.time() - start > time_limit:
             break
@@ -467,7 +474,6 @@ def find_best_move(board, depth, time_limit=2.0):
     return best_move if best_move else random.choice(moves)
 
 def minimax(board, depth, alpha, beta, maximizing):
-    """Minimax with alpha-beta pruning."""
     if depth == 0 or board.is_game_over():
         return evaluate_board(board)
     if maximizing:
@@ -494,12 +500,10 @@ def minimax(board, depth, alpha, beta, maximizing):
         return min_eval
 
 def evaluate_board(board):
-    """Basic material + positional evaluation."""
     if board.is_checkmate():
         return -10000 if board.turn == chess.WHITE else 10000
     if board.is_stalemate() or board.is_insufficient_material():
         return 0
-    # Simple material evaluation
     value = 0
     for piece_type in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
         value += len(board.pieces(piece_type, chess.WHITE)) * [100, 320, 330, 500, 900][piece_type-1]
@@ -510,10 +514,6 @@ def evaluate_board(board):
 # ANTICHESS LEGAL MOVES (captures forced)
 # ============================================================
 def antichess_legal_moves(board):
-    """
-    Returns legal moves for Antichess.
-    In Antichess, if captures exist, only captures are allowed.
-    """
     moves = list(board.legal_moves)
     captures = [m for m in moves if board.is_capture(m)]
     return captures if captures else moves
@@ -521,10 +521,6 @@ def antichess_legal_moves(board):
 # TOURNAMENT JOINING
 # ============================================================
 def join_tournaments(client, team_ids, max_tournaments=3):
-    """
-    Automatically joins tournaments from the specified teams.
-    Limits to max_tournaments per cycle.
-    """
     joined = 0
     for team_id in team_ids:
         if joined >= max_tournaments:
@@ -542,17 +538,16 @@ def join_tournaments(client, team_ids, max_tournaments=3):
                         time.sleep(2)
                     except Exception as e:
                         print(f"⚠️ Could not join tournament {tourney['id']}: {e}")
+                        traceback.print_exc()
         except Exception as e:
             print(f"⚠️ Could not fetch tournaments for team {team_id}: {e}")
+            traceback.print_exc()
     return joined
 
 # ============================================================
 # SEEK PUBLISHING (using auxiliary account token)
 # ============================================================
-def publicar_seeks(seek_token):
-    """
-    Publishes seeks for all variants and time controls using the auxiliary account.
-    """
+def publish_seeks(seek_token):
     if not seek_token:
         print("⚠️ No SEEK_TOKEN provided. Skipping seeks.")
         return
@@ -561,21 +556,20 @@ def publicar_seeks(seek_token):
     variants = ['standard', 'atomic', 'chess960', 'crazyhouse', 'antichess', 'threeCheck', 'racingKings']
     speeds = ['classical', 'rapid', 'blitz', 'correspondence']
 
-    for variante in variants:
+    for variant in variants:
         for speed in speeds:
             try:
-                # Determine base time and increment per speed
                 if speed == 'classical':
-                    time_min, increment = 1800, 0   # 30 min
+                    time_min, increment = 1800, 0
                 elif speed == 'rapid':
-                    time_min, increment = 600, 0    # 10 min
+                    time_min, increment = 600, 0
                 elif speed == 'blitz':
-                    time_min, increment = 180, 0    # 3 min
+                    time_min, increment = 180, 0
                 else:  # correspondence
-                    time_min, increment = 86400, 0  # 1 day
+                    time_min, increment = 86400, 0
 
                 payload = {
-                    "variant": variante,
+                    "variant": variant,
                     "time": time_min,
                     "increment": increment,
                     "days": 1 if speed == 'correspondence' else 0,
@@ -585,30 +579,37 @@ def publicar_seeks(seek_token):
                 url = "https://lichess.org/api/board/seek"
                 resp = requests.post(url, headers=headers, json=payload, timeout=10)
                 if resp.status_code == 200:
-                    print(f"✅ Seek published: {variante} {speed}")
+                    print(f"✅ Seek published: {variant} {speed}")
                 else:
-                    print(f"⚠️ Failed to publish seek {variante} {speed}: {resp.status_code}")
+                    print(f"⚠️ Failed to publish seek {variant} {speed}: {resp.status_code}")
                 time.sleep(1)
             except Exception as e:
-                print(f"⚠️ Error publishing seek {variante} {speed}: {e}")
+                print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
+                traceback.print_exc()
                 # ============================================================
 # MAIN LOOP
 # ============================================================
 if __name__ == "__main__":
-    # Initialize Lichess client
+    # Initialize global client
+    global client
     session = berserk.TokenSession(LICHESS_TOKEN)
     client = berserk.Client(session=session)
 
-    # Get seek token from environment
     SEEK_TOKEN = os.environ.get("SEEK_TOKEN")
 
     print(f"🤖 {BOT_NAME} starting...")
     print(f"✅ Token loaded: {LICHESS_TOKEN[:5]}...")
 
-    # Infinite loop to keep the bot alive
+    # Verify client works
+    try:
+        profile = client.account.get()
+        print(f"✅ Bot account: {profile.get('username')}")
+    except Exception as e:
+        print(f"⚠️ Could not verify account: {e}")
+        traceback.print_exc()
+
     while True:
         try:
-            # 1. Process events from the main account
             stream = client.bots.stream_incoming_events()
             for event in stream:
                 event_type = event.get('type')
@@ -618,83 +619,90 @@ if __name__ == "__main__":
                     challenge = event.get('challenge', {})
                     variant = challenge.get('variant', {}).get('key', 'standard')
                     speed = challenge.get('speed', 'blitz')
-                    # Accept only if allowed variant and speed
                     if variant in ALLOWED_VARIANTS and speed in ALLOWED_SPEEDS:
                         try:
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
                         except Exception as e:
                             print(f"⚠️ Could not accept challenge: {e}")
+                            traceback.print_exc()
                     else:
                         try:
-                            client.bots.decline_challenge(challenge['id'])
+                            # Always use reason='variant' when declining
+                            client.bots.decline_challenge(challenge['id'], reason='variant')
                             print(f"❌ Challenge declined: {variant} {speed} (not allowed)")
-                        except:
-                            pass
+                        except Exception as e:
+                            print(f"⚠️ Could not decline challenge: {e}")
+                            traceback.print_exc()
 
                 elif event_type == 'gameStart':
                     game_id = event.get('game', {}).get('id')
                     if game_id:
                         print(f"🎮 Game started: {game_id}")
                         try:
-                            # Get game info
                             game = client.bots.get_game(game_id)
                             if not game:
+                                print(f"⚠️ Could not get game {game_id}")
                                 continue
 
-                            variante = game.get('variant', {}).get('key', 'standard')
+                            variant = game.get('variant', {}).get('key', 'standard')
                             speed = game.get('speed', 'blitz')
-                            oponente = game.get('players', {}).get('black', {}).get('username', 'opponent')
-                            if oponente == BOT_NAME:
-                                oponente = game.get('players', {}).get('white', {}).get('username', 'opponent')
+                            opponent = game.get('players', {}).get('black', {}).get('username', 'opponent')
+                            if opponent == BOT_NAME:
+                                opponent = game.get('players', {}).get('white', {}).get('username', 'opponent')
+
+                            print(f"✅ Game {game_id}: {variant} vs {opponent}")
 
                             # Send greeting if not sent before
                             if game_id not in games_greeted:
-                                saludo_rival = random.choice(SALUDOS_RIVAL).format(oponente=oponente, bot=BOT_NAME)
-                                saludo_esp = random.choice(SALUDOS_ESPECTADORES).format(oponente=oponente, bot=BOT_NAME)
-                                enviar_mensaje_largo(game_id, saludo_rival, saludo_esp)
-                                save_greeted(game_id)
+                                try:
+                                    greeting_player = random.choice(GREETINGS_PLAYER).format(opponent=opponent, bot=BOT_NAME)
+                                    greeting_spectators = random.choice(GREETINGS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
+                                    send_long_message(game_id, greeting_player, greeting_spectators)
+                                    save_greeted(game_id)
+                                    print(f"✅ Greeting sent for {game_id}")
+                                except Exception as e:
+                                    print(f"⚠️ Error sending greeting: {e}")
+                                    traceback.print_exc()
 
-                            # Initialize game mode for this match
                             mode = GameMode()
                             game_mode.forced = None
 
-                            # Game loop
                             board = None
                             while True:
-                                # Wait for bot's turn
                                 game_state = client.bots.get_game(game_id)
                                 if not game_state:
+                                    print(f"⚠️ Game {game_id} state not found")
                                     break
 
-                                # Check if game ended
                                 if game_state.get('status') != 'started':
                                     if game_id in games_greeted:
-                                        despedida_rival = random.choice(DESPEDIDAS_RIVAL).format(oponente=oponente)
-                                        despedida_esp = random.choice(DESPEDIDAS_ESPECTADORES).format(oponente=oponente, bot=BOT_NAME)
-                                        enviar_mensaje_largo(game_id, despedida_rival, despedida_esp)
+                                        try:
+                                            farewell_player = random.choice(FAREWELLS_PLAYER).format(opponent=opponent)
+                                            farewell_spectators = random.choice(FAREWELLS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
+                                            send_long_message(game_id, farewell_player, farewell_spectators)
+                                        except Exception as e:
+                                            print(f"⚠️ Error sending farewell: {e}")
+                                            traceback.print_exc()
                                     print(f"🏁 Game {game_id} finished")
                                     break
 
-                                # Get board
                                 fen = game_state.get('fen')
                                 if not fen:
                                     time.sleep(1)
                                     continue
 
                                 if board is None:
-                                    board = crear_tablero(variante, fen)
+                                    board = create_board(variant, fen)
                                 else:
                                     board.set_fen(fen)
 
-                                # Check if it's bot's turn
                                 is_white = game_state.get('players', {}).get('white', {}).get('username') == BOT_NAME
                                 bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
                                 if not bot_turn:
                                     time.sleep(1)
                                     continue
 
-                                # Get remaining time
                                 remaining_time = None
                                 if is_white:
                                     wtime = game_state.get('clock', {}).get('remaining')
@@ -707,9 +715,8 @@ if __name__ == "__main__":
 
                                 increment = game_state.get('clock', {}).get('increment', 0)
 
-                                # Calculate and make the move
                                 try:
-                                    move = obtener_jugada(board, remaining_time, increment, variante, mode)
+                                    move = get_move(board, remaining_time, increment, variant, mode)
                                     if move:
                                         client.bots.make_move(game_id, move.uci())
                                         print(f"➡️ Move: {move.uci()}")
@@ -719,31 +726,42 @@ if __name__ == "__main__":
                                         break
                                 except Exception as e:
                                     print(f"⚠️ Error making move: {e}")
+                                    traceback.print_exc()
                                     time.sleep(2)
 
                                 time.sleep(0.5)
 
                         except Exception as e:
                             print(f"⚠️ Error in game {game_id}: {e}")
+                            traceback.print_exc()
 
                 elif event_type == 'gameFinish':
                     game_id = event.get('game', {}).get('id')
                     if game_id:
                         print(f"🏁 Game {game_id} finished (event)")
 
-            # 2. Publish seeks (every 60 seconds)
+            # Publish seeks every 20 seconds
             if SEEK_TOKEN:
-                publicar_seeks(SEEK_TOKEN)
+                try:
+                    publish_seeks(SEEK_TOKEN)
+                except Exception as e:
+                    print(f"⚠️ Error publishing seeks: {e}")
+                    traceback.print_exc()
 
-            # 3. Join tournaments
-            join_tournaments(client, TEAM_IDS, MAX_TOURNAMENTS_PER_CYCLE)
+            # Join tournaments
+            try:
+                join_tournaments(client, TEAM_IDS, MAX_TOURNAMENTS_PER_CYCLE)
+            except Exception as e:
+                print(f"⚠️ Error joining tournaments: {e}")
+                traceback.print_exc()
 
-            # Wait before repeating the cycle
-            time.sleep(60)
+            # Wait 20 seconds between cycles (as requested)
+            time.sleep(20)
 
         except KeyboardInterrupt:
             print("🛑 Bot stopped by user")
             break
         except Exception as e:
             print(f"⚠️ Error in main loop: {e}")
+            traceback.print_exc()
             time.sleep(10)
