@@ -26,7 +26,6 @@ jobs:
         run: |
           mkdir -p $HOME/bin
           
-          # Descargar el binario directamente (ya no es un .tar)
           BIN_URL="https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-largeboard_x86-64"
           echo "Downloading Fairy‑Stockfish from $BIN_URL"
           wget -q "$BIN_URL" -O fairy-stockfish
@@ -36,7 +35,6 @@ jobs:
             exit 1
           fi
           
-          # Verificar que es un ejecutable válido (opcional)
           if ! file fairy-stockfish | grep -q "ELF"; then
             echo "❌ Downloaded file is not a valid Linux executable"
             exit 1
@@ -48,6 +46,6 @@ jobs:
 
       - name: Run the bot
         env:
-          LICHESS_BOT_TOKEN: ${{ secrets.LIP_XXXXXXXXXXXX }}
+          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}   # <-- NUEVO NOMBRE
           SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
         run: python bot.py
