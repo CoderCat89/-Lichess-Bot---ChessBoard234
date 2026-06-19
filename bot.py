@@ -7,7 +7,7 @@ from datetime import datetime
 # ============================================================
 # CONFIGURATION (token from environment, name customized)
 # ============================================================
-LICHESS_TOKEN = os.environ.get("lip_xxxxxxxxxxxx")  # change secret name in GitHub accordingly
+LICHESS_TOKEN = os.environ.get("LIP_XXXXXXXXXXXX")  # change secret name in GitHub accordingly
 if not LICHESS_TOKEN:
     print("ERROR - Token not set. Add lip_xxxxxxxxxxxx as a GitHub secret.")
     exit(1)
