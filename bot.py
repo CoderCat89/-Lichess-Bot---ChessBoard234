@@ -18,9 +18,6 @@ ALLOWED_SPEEDS = {'classical','rapid','blitz','correspondence'}
 TEAM_IDS = [ "daily-bot-tournaments", "core-chess-study", "darkonbot", "growing-chess-variants-masters", "bot--human-team-battles" ]
 MAX_TOURNAMENTS_PER_CYCLE = 3
 
-# ✅ GLOBAL CLIENT (initialized in main)
-client = None
-
 class GameMode:
     def __init__(self):
         self.forced = None
@@ -39,7 +36,7 @@ if os.path.exists(STOCKFISH_PATH):
     os.chmod(STOCKFISH_PATH, 0o755)
     try:
         engine_std = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-        engine_std.configure({"Threads": 4, "Hash": 256})  # ✅ 3500+ ELO
+        engine_std.configure({"Threads": 4, "Hash": 256})
         print(f"Stockfish ready (standard & chess960) - {STOCKFISH_PATH}")
     except Exception as e:
         print(f"Could not start Stockfish: {e}")
@@ -50,7 +47,7 @@ if os.path.exists(FAIRY_PATH):
     os.chmod(FAIRY_PATH, 0o755)
     try:
         engine_var = chess.engine.SimpleEngine.popen_uci(FAIRY_PATH)
-        engine_var.configure({"Threads": 4, "Hash": 256})  # ✅ 3500+ ELO
+        engine_var.configure({"Threads": 4, "Hash": 256})
         print(f"Fairy-Stockfish ready (all variants) - {FAIRY_PATH}")
     except Exception as e:
         print(f"Could not start Fairy-Stockfish: {e}")
@@ -74,9 +71,9 @@ def save_greeted(game_id):
 games_greeted = load_greeted()
 
 # ============================================================
-# MESSAGES (all in English, typos, simple kaomojis: :), :(, :3, X3)
+# MESSAGES (all in English, typos, simple kaomojis)
 # ============================================================
-GREETINGS_PLAYER = [
+SALUDOS_RIVAL = [
     "helo {oponente}! im {bot} :) lets hve a gr8 game! (type 'commands' for options) :3",
     "hi {oponente}, welcom! good luck n hve fun. (commands inside) X3",
     "greetings, {oponente}. i hope u enjoy our match. (type commands for help) :)",
@@ -87,8 +84,7 @@ GREETINGS_PLAYER = [
     "hey {oponente}, nice to meet u on the board! (type commands) X3",
     "hi {oponente}! lets mak this an excitin game. (commands = more) :)"
 ]
-
-RESPONSES_PLAYER = [
+RESPUESTAS_RIVAL = [
     "ha! my circuits r tinglin with that, {oponente}. now lets c if ur moves tingle aswell :P :3",
     "interestin, {oponente}. i'l add that to my database of 'human weirdness'. :o",
     "u talk the talk, {oponente}, but can u walk the board? X3",
@@ -104,8 +100,7 @@ RESPONSES_PLAYER = [
     "hello {oponente}! i c ur still typing. less chat, more chess! X3",
     "u sed hi, i say bye... to ur pieces! :3"
 ]
-
-FAREWELLS_PLAYER = [
+DESPEDIDAS_RIVAL = [
     "good game, {oponente}! i realy enjoyed it. c u soon! if u hve feedback or find a bug, tell @GatoChess89 :) :3",
     "well played, {oponente}. that was a pleasure. (bugs? suggestions? -> @GatoChess89) X3",
     "thx for the game, {oponente}. come back anytime! (feedback to @GatoChess89 plz) :)",
@@ -119,8 +114,7 @@ FAREWELLS_PLAYER = [
     "gg wp {oponente}! if u found a bug, plz tell @GatoChess89 X3",
     "lol that was intense! great game, {oponente}. feedback? @GatoChess89 :)"
 ]
-
-GREETINGS_SPECTATORS = [
+SALUDOS_ESPECTADORES = [
     "ladies and gentlemen, {oponente} has entered the arena. the match is about to start! X3",
     "spectators, welcome! {bot} vs {oponente} begins now. :)",
     "grab ur popcorn, folks. {oponente} is facin {bot}! :3",
@@ -131,8 +125,7 @@ GREETINGS_SPECTATORS = [
     "welcome to the arena! {oponente} vs {bot} – enjoy! :)",
     "dear spectators, a new challenge begins. good luck to both players! :3"
 ]
-
-RESPONSES_SPECTATORS = [
+RESPUESTAS_ESPECTADORES = [
     "spectators, note how {oponente} tries to distract me with words. cute, isnt it? X3",
     "the audience can c that {oponente}'s keyboard is mightier than their bishop. :)",
     "i hope ur enjoyin the show, folks. {oponente} is providin excellent entertainment. :3",
@@ -144,8 +137,7 @@ RESPONSES_SPECTATORS = [
     "lol did u hear that, spectators? {oponente} is a comedian X3",
     "hello audience! {oponente} sed something funny. lets all laugh together :P"
 ]
-
-FAREWELLS_SPECTATORS = [
+DESPEDIDAS_ESPECTADORES = [
     "the game is over! thank u all for watchin. (feedback to @GatoChess89) :)",
     "spectators, i hope u enjoyed the match. goodbye! (tell @GatoChess89 ur thoughts) :3",
     "the curtain falls. another excitin game in the books. (bugs? @GatoChess89) X3",
@@ -157,7 +149,6 @@ FAREWELLS_SPECTATORS = [
     "bye spectators! that was a fun match. feedback always welcome at @GatoChess89 X3",
     "gg to everyone watching! plz send ur thoughts to @GatoChess89 :)"
 ]
-
 COMMANDS_LIST = (
     "commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
@@ -165,8 +156,8 @@ COMMANDS_LIST = (
 # ============================================================
 # COMMAND PROCESSOR (with noob restriction, typos, simple kaomojis)
 # ============================================================
-def process_command(text, opponent, mode, game_info=None):
-    t = text.strip().lower()
+def procesar_comando(texto, oponente, mode, game_info=None):
+    t = texto.strip().lower()
     if t.startswith('!'):
         t = t[1:].strip()
     if t in ('commands','comands','comand','help','?'):
@@ -191,7 +182,7 @@ def process_command(text, opponent, mode, game_info=None):
         mode.forced = None
         return "adaptive mode restored. i'l follow ur rhythm. :)"
     if t in ('leaderboard','ranking','lb'):
-        return f"{opponent}, u are currently the most important player in my database. :3"
+        return f"{oponente}, u are currently the most important player in my database. :3"
     if t in ('formula','math'):
         return "my formula: fun + concentration = great chess. X3"
     if t == 'comment':
@@ -224,7 +215,7 @@ def process_command(text, opponent, mode, game_info=None):
             "there are more possible chess games than atoms in the observable universe. :)"
         ])
     if t == 'userfacts':
-        return f"fun fact about {opponent}: u r a valued opponent. keep it up! :3"
+        return f"fun fact about {oponente}: u r a valued opponent. keep it up! :3"
     if t == 'eval':
         return "the position is balanced. keep playin carefully! X3"
     if t == 'thegame':
@@ -244,66 +235,62 @@ def process_command(text, opponent, mode, game_info=None):
     return None
 
 # ============================================================
-# MESSAGE SENDING (split at 140 chars, uses global client)
+# MESSAGE SENDING (split at 140 chars, NO global client)
 # ============================================================
 already_answered = set()
 
-def send_long_message(game_id, player_text, spectator_text=None, only_player=False):
-    def split_and_send(text, room):
-        if not text:
+def enviar_mensaje_largo(game_id, texto_rival, texto_espectadores=None, solo_rival=False):
+    def dividir_y_enviar(texto, room):
+        if not texto:
             return
-        print(f"Sending to {room}: {text[:60]}...")
+        print(f"Sending to {room}: {texto[:60]}...")
         max_len = 140
-        while text:
-            if len(text) <= max_len:
-                chunk = text
-                text = ""
+        while texto:
+            if len(texto) <= max_len:
+                trozo = texto
+                texto = ""
             else:
-                pos = text.rfind(' ', 0, max_len)
+                pos = texto.rfind(' ', 0, max_len)
                 if pos == -1:
                     pos = max_len
-                chunk = text[:pos].strip()
-                text = text[pos:].strip()
+                trozo = texto[:pos].strip()
+                texto = texto[pos:].strip()
             try:
                 if room == 'player':
-                    if client:
-                        client.bots.post_message(game_id, chunk)
-                    else:
-                        print("⚠️ Client not available for player message")
+                    # ✅ Usamos client directamente (está en el ámbito global)
+                    client.bots.post_message(game_id, trozo)
                 else:
                     url = f"https://lichess.org/api/bot/game/{game_id}/chat"
                     requests.post(url, headers={"Authorization": f"Bearer {LICHESS_TOKEN}"},
-                                 json={"room": "spectator", "text": chunk}, timeout=5)
+                                 json={"room": "spectator", "text": trozo}, timeout=5)
                 time.sleep(0.3)
             except Exception as e:
                 print(f"⚠️ Error sending to {room}: {e}")
                 traceback.print_exc()
     try:
-        split_and_send(player_text, 'player')
-    except Exception as e:
-        print(f"⚠️ Error sending player message: {e}")
-        traceback.print_exc()
-    if not only_player and spectator_text:
+        dividir_y_enviar(texto_rival, 'player')
+    except:
+        pass
+    if not solo_rival and texto_espectadores:
         try:
-            split_and_send(spectator_text, 'spectator')
-        except Exception as e:
-            print(f"⚠️ Error sending spectator message: {e}")
-            traceback.print_exc()
+            dividir_y_enviar(texto_espectadores, 'spectator')
+        except:
+            pass
             # ============================================================
 # BOARD BY VARIANT
 # ============================================================
-def create_board(variant, initial_fen=None):
-    if variant == 'standard':
-        return chess.Board() if not initial_fen else chess.Board(initial_fen)
-    if variant == 'chess960':
-        return chess.Board(initial_fen, chess960=True) if initial_fen else chess.Board(chess960=True)
-    if variant == 'atomic':
+def crear_tablero(variante, fen_inicial=None):
+    if variante == 'standard':
+        return chess.Board() if not fen_inicial else chess.Board(fen_inicial)
+    if variante == 'chess960':
+        return chess.Board(fen_inicial, chess960=True) if fen_inicial else chess.Board(chess960=True)
+    if variante == 'atomic':
         return chess.variant.AtomicBoard()
-    if variant == 'crazyhouse':
+    if variante == 'crazyhouse':
         return chess.variant.CrazyhouseBoard()
-    if variant == 'racingKings':
+    if variante == 'racingKings':
         return chess.variant.RacingKingsBoard()
-    return chess.Board() if not initial_fen else chess.Board(initial_fen)
+    return chess.Board() if not fen_inicial else chess.Board(fen_inicial)
 
 # ============================================================
 # SUNFISH (reserve)
@@ -333,9 +320,9 @@ directions = {
     'K': (N, S, E, W, N+E, N+W, S+E, S+W)
 }
 # ============================================================
-# CORE: get_move (with extended analysis time)
+# CORE: obtener_jugada (with extended analysis time)
 # ============================================================
-def get_move(board, remaining_time, increment, variant, mode):
+def obtener_jugada(board, remaining_time, increment, variante, mode):
     """
     Returns the best move using:
     1. Cloud Eval (fast)
@@ -371,13 +358,13 @@ def get_move(board, remaining_time, increment, variant, mode):
     try:
         fen = board.fen()
         fen_encoded = quote(fen, safe='')
-        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variant}"
+        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variante}"
         resp = requests.get(url, timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             if "pvs" in data and len(data["pvs"]) > 0:
-                best_san = data["pvs"][0]["moves"].split()[0]
-                move = board.parse_san(best_san)
+                mejor_san = data["pvs"][0]["moves"].split()[0]
+                move = board.parse_san(mejor_san)
                 if move in board.legal_moves:
                     print("✅ Cloud Eval")
                     return move
@@ -386,7 +373,7 @@ def get_move(board, remaining_time, increment, variant, mode):
         traceback.print_exc()
 
     # 2) Local engines (with extended time)
-    if variant in ('standard', 'chess960'):
+    if variante in ('standard', 'chess960'):
         engine = engine_std
     else:
         engine = engine_var
@@ -394,12 +381,12 @@ def get_move(board, remaining_time, increment, variant, mode):
     if engine:
         try:
             # Configure variant for Fairy
-            if variant == 'threeCheck':
+            if variante == 'threeCheck':
                 engine.configure({"UCI_Variant": "3check"})
-            elif variant == 'standard':
+            elif variante == 'standard':
                 engine.configure({"UCI_Variant": "chess"})
             else:
-                engine.configure({"UCI_Variant": variant})
+                engine.configure({"UCI_Variant": variante})
 
             # Ensure no depth limit (only time)
             engine.configure({"Move Overhead": 100})
@@ -413,14 +400,14 @@ def get_move(board, remaining_time, increment, variant, mode):
             traceback.print_exc()
 
     # 3) Sunfish (standard only)
-    if variant == 'standard':
+    if variante == 'standard':
         move = sunfish_move(board, remaining_time, mode)
         if move and move in board.legal_moves:
             print("✅ Sunfish")
             return move
 
     # 4) Alpha-beta for variants
-    if variant in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
+    if variante in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
         depth = 7 if (mode.forced == 'slow' or (mode.forced is None and remaining_time and remaining_time > 60)) else 6
         move = find_best_move(board, depth, time_limit=2.0)
         if move and move in board.legal_moves:
@@ -428,7 +415,7 @@ def get_move(board, remaining_time, increment, variant, mode):
             return move
 
     # 5) Antichess specific
-    if variant == 'antichess':
+    if variante == 'antichess':
         moves = antichess_legal_moves(board)
         if moves:
             return random.choice(moves)
@@ -547,7 +534,7 @@ def join_tournaments(client, team_ids, max_tournaments=3):
 # ============================================================
 # SEEK PUBLISHING (using auxiliary account token)
 # ============================================================
-def publish_seeks(seek_token):
+def publicar_seeks(seek_token):
     if not seek_token:
         print("⚠️ No SEEK_TOKEN provided. Skipping seeks.")
         return
@@ -556,7 +543,7 @@ def publish_seeks(seek_token):
     variants = ['standard', 'atomic', 'chess960', 'crazyhouse', 'antichess', 'threeCheck', 'racingKings']
     speeds = ['classical', 'rapid', 'blitz', 'correspondence']
 
-    for variant in variants:
+    for variante in variants:
         for speed in speeds:
             try:
                 if speed == 'classical':
@@ -569,7 +556,7 @@ def publish_seeks(seek_token):
                     time_min, increment = 86400, 0
 
                 payload = {
-                    "variant": variant,
+                    "variant": variante,
                     "time": time_min,
                     "increment": increment,
                     "days": 1 if speed == 'correspondence' else 0,
@@ -579,21 +566,20 @@ def publish_seeks(seek_token):
                 url = "https://lichess.org/api/board/seek"
                 resp = requests.post(url, headers=headers, json=payload, timeout=10)
                 if resp.status_code == 200:
-                    print(f"✅ Seek published: {variant} {speed}")
+                    print(f"✅ Seek published: {variante} {speed}")
                 else:
-                    print(f"⚠️ Failed to publish seek {variant} {speed}: {resp.status_code}")
+                    print(f"⚠️ Failed to publish seek {variante} {speed}: {resp.status_code}")
                 time.sleep(1)
             except Exception as e:
-                print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
+                print(f"⚠️ Error publishing seek {variante} {speed}: {e}")
                 traceback.print_exc()
                 # ============================================================
 # MAIN LOOP
 # ============================================================
 if __name__ == "__main__":
-    # ✅ global client como PRIMERA LÍNEA (evita error de sintaxis)
-    global client
+    # ✅ Inicializamos client (está en el ámbito global, no hace falta 'global')
     session = berserk.TokenSession(LICHESS_TOKEN)
-    client = berserk.Client(session=session)
+    client = berserk.Client(session=session)  # <-- Esta variable es global
 
     SEEK_TOKEN = os.environ.get("SEEK_TOKEN")
 
@@ -656,10 +642,10 @@ if __name__ == "__main__":
                             # Send greeting if not sent before
                             if game_id not in games_greeted:
                                 try:
-                                    greeting_player = random.choice(GREETINGS_PLAYER).format(opponent=opponent, bot=BOT_NAME)
-                                    greeting_spectators = random.choice(GREETINGS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
-                                    # ✅ send_long_message usa client global
-                                    send_long_message(game_id, greeting_player, greeting_spectators)
+                                    greeting_player = random.choice(SALUDOS_RIVAL).format(oponente=opponent, bot=BOT_NAME)
+                                    greeting_spectators = random.choice(SALUDOS_ESPECTADORES).format(oponente=opponent, bot=BOT_NAME)
+                                    # ✅ enviar_mensaje_largo usa client global
+                                    enviar_mensaje_largo(game_id, greeting_player, greeting_spectators)
                                     save_greeted(game_id)
                                     print(f"✅ Greeting sent for {game_id}")
                                 except Exception as e:
@@ -679,9 +665,9 @@ if __name__ == "__main__":
                                 if game_state.get('status') != 'started':
                                     if game_id in games_greeted:
                                         try:
-                                            farewell_player = random.choice(FAREWELLS_PLAYER).format(opponent=opponent)
-                                            farewell_spectators = random.choice(FAREWELLS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
-                                            send_long_message(game_id, farewell_player, farewell_spectators)
+                                            farewell_player = random.choice(DESPEDIDAS_RIVAL).format(oponente=opponent)
+                                            farewell_spectators = random.choice(DESPEDIDAS_ESPECTADORES).format(oponente=opponent, bot=BOT_NAME)
+                                            enviar_mensaje_largo(game_id, farewell_player, farewell_spectators)
                                         except Exception as e:
                                             print(f"⚠️ Error sending farewell: {e}")
                                             traceback.print_exc()
@@ -694,7 +680,7 @@ if __name__ == "__main__":
                                     continue
 
                                 if board is None:
-                                    board = create_board(variant, fen)
+                                    board = crear_tablero(variant, fen)
                                 else:
                                     board.set_fen(fen)
 
@@ -717,7 +703,7 @@ if __name__ == "__main__":
                                 increment = game_state.get('clock', {}).get('increment', 0)
 
                                 try:
-                                    move = get_move(board, remaining_time, increment, variant, mode)
+                                    move = obtener_jugada(board, remaining_time, increment, variant, mode)
                                     if move:
                                         client.bots.make_move(game_id, move.uci())
                                         print(f"➡️ Move: {move.uci()}")
@@ -744,7 +730,7 @@ if __name__ == "__main__":
             # Publish seeks every 20 seconds
             if SEEK_TOKEN:
                 try:
-                    publish_seeks(SEEK_TOKEN)
+                    publicar_seeks(SEEK_TOKEN)
                 except Exception as e:
                     print(f"⚠️ Error publishing seeks: {e}")
                     traceback.print_exc()
