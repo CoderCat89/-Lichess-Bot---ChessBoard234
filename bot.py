@@ -5,11 +5,11 @@ from collections import namedtuple
 from datetime import datetime
 
 # ============================================================
-# CONFIGURATION (token from environment, name customized)
+# CONFIGURATION (token from environment)
 # ============================================================
-LICHESS_TOKEN = os.environ.get("LIP_XXXXXXXXXXXX")  # change secret name in GitHub accordingly
+LICHESS_TOKEN = os.environ.get("LICHESS_TOKEN")  # <-- NUEVO NOMBRE
 if not LICHESS_TOKEN:
-    print("ERROR - Token not set. Add lip_xxxxxxxxxxxx as a GitHub secret.")
+    print("ERROR - Token not set. Add LICHESS_TOKEN as a GitHub secret.")
     exit(1)
 
 BOT_NAME = "chessboard234"
@@ -36,7 +36,7 @@ if os.path.exists(STOCKFISH_PATH):
     os.chmod(STOCKFISH_PATH, 0o755)
     try:
         engine_std = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-        engine_std.configure({"Threads": 4, "Hash": 256})  # ← CAMBIADO: más hilos y memoria
+        engine_std.configure({"Threads": 4, "Hash": 256})
         print(f"Stockfish ready (standard & chess960) - {STOCKFISH_PATH}")
     except Exception as e:
         print(f"Could not start Stockfish: {e}")
@@ -46,7 +46,7 @@ if os.path.exists(FAIRY_PATH):
     os.chmod(FAIRY_PATH, 0o755)
     try:
         engine_var = chess.engine.SimpleEngine.popen_uci(FAIRY_PATH)
-        engine_var.configure({"Threads": 4, "Hash": 256})  # ← CAMBIADO: más hilos y memoria
+        engine_var.configure({"Threads": 4, "Hash": 256})
         print(f"Fairy-Stockfish ready (all variants) - {FAIRY_PATH}")
     except Exception as e:
         print(f"Could not start Fairy-Stockfish: {e}")
@@ -314,7 +314,7 @@ directions = {
     'R': (N, S, E, W),
     'Q': (N, S, E, W, N+E, N+W, S+E, S+W),
     'K': (N, S, E, W, N+E, N+W, S+E, S+W)
-}
+                    }
 # ============================================================
 # CORE: obtener_jugada (with extended analysis time)
 # ============================================================
