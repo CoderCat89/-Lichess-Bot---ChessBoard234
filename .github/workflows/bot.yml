@@ -8,7 +8,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 359     # 5h 59m, so only ~1 min gap between runs
+    timeout-minutes: 359     # 5h 59m
 
     steps:
       - uses: actions/checkout@v4
@@ -25,27 +25,24 @@ jobs:
         shell: bash
         run: |
           mkdir -p $HOME/bin
-          
+          # ✅ El binario ya no viene en .tar, es directo
           BIN_URL="https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-largeboard_x86-64"
           echo "Downloading Fairy‑Stockfish from $BIN_URL"
           wget -q "$BIN_URL" -O fairy-stockfish
-          
           if [ ! -f fairy-stockfish ]; then
             echo "❌ Failed to download Fairy‑Stockfish"
             exit 1
           fi
-          
           if ! file fairy-stockfish | grep -q "ELF"; then
             echo "❌ Downloaded file is not a valid Linux executable"
             exit 1
           fi
-          
           cp fairy-stockfish $HOME/bin/fairy-stockfish
           chmod +x $HOME/bin/fairy-stockfish
           echo "✅ Fairy‑Stockfish installed successfully"
 
       - name: Run the bot
         env:
-          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}   # <-- NUEVO NOMBRE
+          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
           SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
         run: python bot.py
