@@ -48,6 +48,6 @@ jobs:
 
       - name: Run the bot
         env:
-          LICHESS_BOT_TOKEN: ${{ secrets.lip_xxxxxxxxxxxx }}
+          LICHESS_BOT_TOKEN: ${{ secrets.LIP_XXXXXXXXXXXX }}
           SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
         run: python bot.py
