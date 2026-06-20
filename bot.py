@@ -600,8 +600,6 @@ def publish_seeks(seek_token):
 # MAIN LOOP (with your resilient event stream solution - two nested loops)
 # ============================================================
 if __name__ == "__main__":
-    # ✅ global client (needed for send_long_message)
-    global client
     SEEK_TOKEN = os.environ.get("SEEK_TOKEN")
 
     print(f"🤖 {BOT_NAME} starting...")
