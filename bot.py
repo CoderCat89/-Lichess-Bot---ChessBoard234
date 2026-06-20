@@ -161,7 +161,7 @@ FAREWELLS_SPECTATORS = [
 COMMANDS_LIST = (
     "commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
-        )
+             )
 # ============================================================
 # COMMAND PROCESSOR (with noob restriction, typos, simple kaomojis)
 # ============================================================
@@ -245,6 +245,7 @@ def process_command(text, opponent, mode, game_info=None):
 
 # ============================================================
 # MESSAGE SENDING (split at 140 chars, uses global client)
+# ✅ INDENTATION CORRECTED (no extra comments inside the function)
 # ============================================================
 already_answered = set()
 
@@ -278,18 +279,22 @@ def send_long_message(game_id, player_text, spectator_text=None, only_player=Fal
             except Exception as e:
                 print(f"⚠️ Error sending to {room}: {e}")
                 traceback.print_exc()
+
     try:
         split_and_send(player_text, 'player')
     except Exception as e:
         print(f"⚠️ Error sending player message: {e}")
         traceback.print_exc()
+
     if not only_player and spectator_text:
         try:
             split_and_send(spectator_text, 'spectator')
         except Exception as e:
             print(f"⚠️ Error sending spectator message: {e}")
             traceback.print_exc()
-            # ============================================================
+
+    # ✅ Function ends here. No extra comments inside.
+    # ============================================================
 # BOARD BY VARIANT (FIXED: supports antichess and threeCheck)
 # ============================================================
 def create_board(variant, initial_fen=None):
@@ -336,7 +341,7 @@ directions = {
     'R': (N, S, E, W),
     'Q': (N, S, E, W, N+E, N+W, S+E, S+W),
     'K': (N, S, E, W, N+E, N+W, S+E, S+W)
-}
+    }
 # ============================================================
 # CORE: get_move (with extended analysis time)
 # ============================================================
