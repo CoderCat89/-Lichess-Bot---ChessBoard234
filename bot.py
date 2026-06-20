@@ -1,4 +1,4 @@
-import berserk, chess, chess.variant, requests, time, random, threading, json, os, chess.engine, traceback
+import berserk, chess, chess.variant, requests, time, random, threading, json, os, chess.engine, traceback, sys
 from urllib.parse import quote
 from itertools import count
 from collections import namedtuple
@@ -18,7 +18,7 @@ ALLOWED_SPEEDS = {'classical','rapid','blitz','correspondence'}
 TEAM_IDS = [ "daily-bot-tournaments", "core-chess-study", "darkonbot", "growing-chess-variants-masters", "bot--human-team-battles" ]
 MAX_TOURNAMENTS_PER_CYCLE = 3
 
-# ✅ GLOBAL CLIENT (initialized in main)
+# Global client (will be reassigned in main)
 client = None
 
 class GameMode:
@@ -161,7 +161,7 @@ FAREWELLS_SPECTATORS = [
 COMMANDS_LIST = (
     "commands: slow, fast, pro, noob, play, leaderboard, formula, comment, ct, weather, time, "
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
-             )
+)
 # ============================================================
 # COMMAND PROCESSOR (with noob restriction, typos, simple kaomojis)
 # ============================================================
@@ -245,7 +245,6 @@ def process_command(text, opponent, mode, game_info=None):
 
 # ============================================================
 # MESSAGE SENDING (split at 140 chars, uses global client)
-# ✅ INDENTATION CORRECTED (no extra comments inside the function)
 # ============================================================
 already_answered = set()
 
@@ -292,10 +291,8 @@ def send_long_message(game_id, player_text, spectator_text=None, only_player=Fal
         except Exception as e:
             print(f"⚠️ Error sending spectator message: {e}")
             traceback.print_exc()
-
-    # ✅ Function ends here. No extra comments inside.
-    # ============================================================
-# BOARD BY VARIANT (FIXED: supports antichess and threeCheck)
+            # ============================================================
+# BOARD BY VARIANT (supports antichess and threeCheck)
 # ============================================================
 def create_board(variant, initial_fen=None):
     if variant == 'standard':
@@ -316,7 +313,7 @@ def create_board(variant, initial_fen=None):
     return chess.Board() if not initial_fen else chess.Board(initial_fen)
 
 # ============================================================
-# SUNFISH (reserve)
+# SUNFISH (reserve engine)
 # ============================================================
 piece_sf = {"P":100,"N":280,"B":320,"R":479,"Q":929,"K":60000}
 pst_sf = {
@@ -341,7 +338,7 @@ directions = {
     'R': (N, S, E, W),
     'Q': (N, S, E, W, N+E, N+W, S+E, S+W),
     'K': (N, S, E, W, N+E, N+W, S+E, S+W)
-    }
+        }
 # ============================================================
 # CORE: get_move (with extended analysis time)
 # ============================================================
@@ -596,185 +593,145 @@ def publish_seeks(seek_token):
             except Exception as e:
                 print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
                 traceback.print_exc()
-                # ============================================================
-# MAIN LOOP (with your resilient event stream solution - two nested loops)
+
 # ============================================================
-if __name__ == "__main__":
-    SEEK_TOKEN = os.environ.get("SEEK_TOKEN")
+# GAME HANDLER (extracted from polling loop)
+# ============================================================
+def handle_game(game, client):
+    game_id = game['id']
+    print(f"🎮 Processing game {game_id}")
+    try:
+        variant = game.get('variant', {}).get('key', 'standard')
+        speed = game.get('speed', 'blitz')
+        opponent = game.get('players', {}).get('black', {}).get('username', 'opponent')
+        if opponent == BOT_NAME:
+            opponent = game.get('players', {}).get('white', {}).get('username', 'opponent')
+        print(f"✅ {game_id}: {variant} vs {opponent}")
 
-    print(f"🤖 {BOT_NAME} starting...")
+        # Send greeting if not sent before
+        if game_id not in games_greeted:
+            greeting_player = random.choice(GREETINGS_PLAYER).format(opponent=opponent, bot=BOT_NAME)
+            greeting_spectators = random.choice(GREETINGS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
+            send_long_message(game_id, greeting_player, greeting_spectators)
+            save_greeted(game_id)
+            print(f"✅ Greeting sent for {game_id}")
 
-    # Outer loop: handles critical errors and re-initializes the client
-    while True:
-        try:
-            # Create a new session and client
-            session = berserk.TokenSession(LICHESS_TOKEN)
-            client = berserk.Client(session=session)
-            print("🔄 Connecting to Lichess...")
+        mode = GameMode()
+        game_mode.forced = None
+        board = None
 
-            # Verify account
-            try:
-                profile = client.account.get()
-                print(f"✅ Bot account: {profile.get('username')}")
-            except Exception as e:
-                print(f"⚠️ Could not verify account: {e}")
-                traceback.print_exc()
-                time.sleep(10)
+        # Game loop
+        while True:
+            game_state = client.bots.get_game(game_id)
+            if not game_state:
+                print(f"⚠️ Game state not available, retrying...")
+                time.sleep(1)
                 continue
 
-            # Inner loop: only handles the event stream and reconnects if it breaks
-            while True:
-                try:
-                    # Get the event stream
-                    stream = client.bots.stream_incoming_events()
-                    for event in stream:
-                        event_type = event.get('type')
-                        print(f"📨 Event: {event_type}")
+            if game_state.get('status') != 'started':
+                if game_id in games_greeted:
+                    farewell_player = random.choice(FAREWELLS_PLAYER).format(opponent=opponent)
+                    farewell_spectators = random.choice(FAREWELLS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
+                    send_long_message(game_id, farewell_player, farewell_spectators)
+                print(f"🏁 Game {game_id} finished")
+                break
 
-                        # --- CHALLENGE ---
-                        if event_type == 'challenge':
-                            challenge = event.get('challenge', {})
-                            variant = challenge.get('variant', {}).get('key', 'standard')
-                            speed = challenge.get('speed', 'blitz')
-                            if variant in ALLOWED_VARIANTS and speed in ALLOWED_SPEEDS:
-                                try:
-                                    client.bots.accept_challenge(challenge['id'])
-                                    print(f"✅ Challenge accepted: {variant} {speed}")
-                                except Exception as e:
-                                    print(f"⚠️ Accept error: {e}")
-                                    traceback.print_exc()
-                            else:
-                                try:
-                                    client.bots.decline_challenge(challenge['id'], reason='variant')
-                                    print(f"❌ Challenge declined: {variant} {speed} (not allowed)")
-                                except Exception as e:
-                                    print(f"⚠️ Decline error: {e}")
-                                    traceback.print_exc()
+            fen = game_state.get('fen')
+            if not fen:
+                time.sleep(1)
+                continue
 
-                        # --- GAME START ---
-                        elif event_type == 'gameStart':
-                            game_id = event.get('game', {}).get('id')
-                            if game_id:
-                                print(f"🎮 Game started: {game_id}")
-                                try:
-                                    game = client.bots.get_game(game_id)
-                                    if not game:
-                                        print(f"⚠️ Could not get game {game_id}")
-                                        continue
+            if board is None:
+                board = create_board(variant, fen)
+            else:
+                board.set_fen(fen)
 
-                                    variant = game.get('variant', {}).get('key', 'standard')
-                                    speed = game.get('speed', 'blitz')
-                                    opponent = game.get('players', {}).get('black', {}).get('username', 'opponent')
-                                    if opponent == BOT_NAME:
-                                        opponent = game.get('players', {}).get('white', {}).get('username', 'opponent')
+            is_white = game_state.get('players', {}).get('white', {}).get('username') == BOT_NAME
+            bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
+            if not bot_turn:
+                time.sleep(1)
+                continue
 
-                                    print(f"✅ Game {game_id}: {variant} vs {opponent}")
+            remaining_time = None
+            if is_white:
+                wtime = game_state.get('clock', {}).get('remaining')
+                if wtime:
+                    remaining_time = wtime / 1000
+            else:
+                btime = game_state.get('clock', {}).get('remaining')
+                if btime:
+                    remaining_time = btime / 1000
+            increment = game_state.get('clock', {}).get('increment', 0)
 
-                                    # Send greeting if not sent before
-                                    if game_id not in games_greeted:
-                                        try:
-                                            greeting_player = random.choice(GREETINGS_PLAYER).format(opponent=opponent, bot=BOT_NAME)
-                                            greeting_spectators = random.choice(GREETINGS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
-                                            send_long_message(game_id, greeting_player, greeting_spectators)
-                                            save_greeted(game_id)
-                                            print(f"✅ Greeting sent for {game_id}")
-                                        except Exception as e:
-                                            print(f"⚠️ Error sending greeting: {e}")
-                                            traceback.print_exc()
+            move = get_move(board, remaining_time, increment, variant, mode)
+            if move:
+                client.bots.make_move(game_id, move.uci())
+                print(f"➡️ Move: {move.uci()}")
+            else:
+                client.bots.resign_game(game_id)
+                print(f"🏳️ Resigned: no legal moves")
+                break
 
-                                    mode = GameMode()
-                                    game_mode.forced = None
+            time.sleep(0.5)
 
-                                    board = None
-                                    while True:
-                                        game_state = client.bots.get_game(game_id)
-                                        if not game_state:
-                                            print(f"⚠️ Game {game_id} state not found")
-                                            break
+    except Exception as e:
+        print(f"⚠️ Error in game {game_id}: {e}")
+        traceback.print_exc()
+        # ============================================================
+# MAIN LOOP (POLLING MODE)
+# ============================================================
+if __name__ == "__main__":
+    # Forzar salida inmediata en GitHub Actions
+    sys.stdout.reconfigure(line_buffering=True)
 
-                                        if game_state.get('status') != 'started':
-                                            if game_id in games_greeted:
-                                                try:
-                                                    farewell_player = random.choice(FAREWELLS_PLAYER).format(opponent=opponent)
-                                                    farewell_spectators = random.choice(FAREWELLS_SPECTATORS).format(opponent=opponent, bot=BOT_NAME)
-                                                    send_long_message(game_id, farewell_player, farewell_spectators)
-                                                except Exception as e:
-                                                    print(f"⚠️ Error sending farewell: {e}")
-                                                    traceback.print_exc()
-                                            print(f"🏁 Game {game_id} finished")
-                                            break
+    SEEK_TOKEN = os.environ.get("SEEK_TOKEN")
+    print(f"🤖 {BOT_NAME} starting in POLLING mode...")
 
-                                        fen = game_state.get('fen')
-                                        if not fen:
-                                            time.sleep(1)
-                                            continue
+    # Crear cliente global (no necesita 'global')
+    session = berserk.TokenSession(LICHESS_TOKEN)
+    client = berserk.Client(session=session)
 
-                                        if board is None:
-                                            board = create_board(variant, fen)
-                                        else:
-                                            board.set_fen(fen)
+    # Verificar cuenta
+    try:
+        profile = client.account.get()
+        print(f"✅ Bot account: {profile.get('username')}")
+    except Exception as e:
+        print(f"❌ Could not verify account: {e}")
+        exit(1)
 
-                                        is_white = game_state.get('players', {}).get('white', {}).get('username') == BOT_NAME
-                                        bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
-                                        if not bot_turn:
-                                            time.sleep(1)
-                                            continue
+    # Conjunto de partidas ya procesadas
+    processed_games = set()
 
-                                        remaining_time = None
-                                        if is_white:
-                                            wtime = game_state.get('clock', {}).get('remaining')
-                                            if wtime:
-                                                remaining_time = wtime / 1000
-                                        else:
-                                            btime = game_state.get('clock', {}).get('remaining')
-                                            if btime:
-                                                remaining_time = btime / 1000
+    # Bucle principal de polling
+    while True:
+        try:
+            # 1. Manejar desafíos pendientes (usando la API de desafíos)
+            try:
+                # Nota: client.bots.get_incoming_events() no siempre está disponible.
+                # Usamos una alternativa: consultar desafíos directamente.
+                # Si tu versión de berserk no tiene get_challenges(), omite esta parte.
+                # challenges = client.bots.get_challenges()
+                # for challenge in challenges:
+                #     # aceptar o rechazar según reglas
+                pass
+            except Exception as e:
+                # No es crítico, solo imprimir
+                print(f"⚠️ Could not fetch challenges: {e}")
 
-                                        increment = game_state.get('clock', {}).get('increment', 0)
+            # 2. Obtener partidas activas
+            try:
+                ongoing = client.bots.get_ongoing_games()
+                for game in ongoing:
+                    game_id = game.get('id')
+                    if game_id in processed_games:
+                        continue
+                    processed_games.add(game_id)
+                    handle_game(game, client)
+            except Exception as e:
+                print(f"⚠️ Error fetching games: {e}")
+                traceback.print_exc()
 
-                                        try:
-                                            move = get_move(board, remaining_time, increment, variant, mode)
-                                            if move:
-                                                client.bots.make_move(game_id, move.uci())
-                                                print(f"➡️ Move: {move.uci()}")
-                                            else:
-                                                client.bots.resign_game(game_id)
-                                                print(f"🏳️ Resigned: no legal moves")
-                                                break
-                                        except Exception as e:
-                                            print(f"⚠️ Error making move: {e}")
-                                            traceback.print_exc()
-                                            time.sleep(2)
-
-                                        time.sleep(0.5)
-
-                                except Exception as e:
-                                    print(f"⚠️ Error in game {game_id}: {e}")
-                                    traceback.print_exc()
-
-                        # --- GAME FINISH ---
-                        elif event_type == 'gameFinish':
-                            game_id = event.get('game', {}).get('id')
-                            if game_id:
-                                print(f"🏁 Game {game_id} finished (event)")
-
-                    # If the for loop ends, the stream closed -> reconnect
-                    print("⚠️ Stream closed, reconnecting...")
-                    break  # exit inner loop to create a new stream
-
-                except (requests.exceptions.ConnectionError,
-                        requests.exceptions.Timeout,
-                        berserk.exceptions.ResponseError) as e:
-                    print(f"⚠️ Stream error (reconnecting in 3s): {e}")
-                    time.sleep(3)
-                    break  # exit inner loop to create a new stream
-                except Exception as e:
-                    print(f"⚠️ Unexpected stream error: {e}")
-                    traceback.print_exc()
-                    time.sleep(10)
-                    break  # exit inner loop to create a new stream
-
-            # After the inner loop breaks, publish seeks and join tournaments
+            # 3. Publicar seeks y unirse a torneos
             if SEEK_TOKEN:
                 try:
                     publish_seeks(SEEK_TOKEN)
@@ -788,13 +745,16 @@ if __name__ == "__main__":
                 print(f"⚠️ Error joining tournaments: {e}")
                 traceback.print_exc()
 
-            # Wait 20 seconds before reconnecting
-            time.sleep(20)
+            # 4. Limpiar partidas finalizadas (opcional)
+            # Si una partida ya no está en ongoing, se puede eliminar de processed_games
+            # pero no es necesario, solo evita que se vuelva a procesar.
+
+            time.sleep(3)  # polling cada 3 segundos
 
         except KeyboardInterrupt:
             print("🛑 Bot stopped by user")
             break
         except Exception as e:
-            print(f"⚠️ Critical error, restarting in 20s: {e}")
+            print(f"⚠️ Error in main loop: {e}")
             traceback.print_exc()
-            time.sleep(20)
+            time.sleep(10)
