@@ -713,12 +713,13 @@ def get_move(board, remaining_time, increment, variant, mode):
         return random.choice(moves)
     return None
     # ============================================================
-# PLAY GAME (extracted from gameStart, with all original logic)
+# PLAY GAME (CORRECTED: uses client.games.get)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
     try:
-        game = client.bots.get_game(game_id)
+        # ✅ CORRECCIÓN: usar client.games.get en lugar de client.bots.get_game
+        game = client.games.get(game_id)
         if not game:
             print(f"⚠️ Could not get game {game_id}")
             return
@@ -747,7 +748,8 @@ def play_game(game_id, client):
         board = None
 
         while True:
-            game_state = client.bots.get_game(game_id)
+            # ✅ CORRECCIÓN: usar client.games.get para el estado de la partida
+            game_state = client.games.get(game_id)
             if not game_state:
                 print(f"⚠️ Game {game_id} state not found")
                 break
@@ -882,7 +884,7 @@ def publish_seeks(seek_token):
                 print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
                 traceback.print_exc()
                 # ============================================================
-# MAIN LOOP (stream + manual search after challenge)
+# MAIN LOOP (CORRECTED: uses client.games.get for manual search)
 # ============================================================
 if __name__ == "__main__":
     session = berserk.TokenSession(LICHESS_TOKEN)
@@ -915,14 +917,24 @@ if __name__ == "__main__":
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
 
-                            # 🔍 MANUAL SEARCH: find the game immediately
-                            time.sleep(2)
-                            ongoing = client.bots.get_ongoing_games()
-                            for g in ongoing:
-                                if g['id'] == challenge['id']:
-                                    print(f"🎮 Game found manually: {g['id']}")
-                                    play_game(g['id'], client)
-                                    break
+                            # 🔍 MANUAL SEARCH: usar client.games.get directamente
+                            found = False
+                            for attempt in range(15):  # 15 intentos, 1 segundo entre cada uno
+                                time.sleep(1)
+                                try:
+                                    game = client.games.get(challenge['id'])
+                                    if game:
+                                        print(f"🎮 Game found manually on attempt {attempt+1}: {challenge['id']}")
+                                        play_game(challenge['id'], client)
+                                        found = True
+                                        break
+                                except Exception as e:
+                                    # Si el juego aún no existe, berserk lanza una excepción
+                                    # Simplemente continuamos el bucle
+                                    pass
+                            if not found:
+                                print(f"⚠️ Could not find game {challenge['id']} after 15 attempts")
+                                # Si no se encuentra, esperamos a que el evento gameStart lo maneje
 
                         except Exception as e:
                             print(f"⚠️ Could not accept challenge: {e}")
