@@ -118,7 +118,7 @@ FAREWELLS_PLAYER = [
     "bye {oponente}! that was fun. remember, feedback goes to @GatoChess89 :3",
     "gg wp {oponente}! if u found a bug, plz tell @GatoChess89 X3",
     "lol that was intense! great game, {oponente}. feedback? @GatoChess89 :)"
-]
+             ]
 # ============================================================
 # MESSAGES (part 2)
 # ============================================================
@@ -291,7 +291,7 @@ def send_long_message(game_id, player_text, spectator_text=None, only_player=Fal
         except Exception as e:
             print(f"⚠️ Error sending spectator message: {e}")
             traceback.print_exc()
-            # ============================================================
+        # ============================================================
 # BOARD BY VARIANT (supports antichess and threeCheck)
 # ============================================================
 def create_board(variant, initial_fen=None):
@@ -389,7 +389,7 @@ def evaluate_sunfish(board):
         if piece:
             value += piece_values[piece.symbol()] + pst_value(piece.symbol(), square)
     return value if board.turn == chess.WHITE else -value
-    # ============================================================
+            # ============================================================
 # SUNFISH EXTREME (part 2) + ALPHA-BETA
 # ============================================================
 def order_moves(board, moves):
@@ -713,13 +713,13 @@ def get_move(board, remaining_time, increment, variant, mode):
         return random.choice(moves)
     return None
     # ============================================================
-# PLAY GAME (CORRECTED: uses client.games.get)
+# PLAY GAME (uses client.bots.get_game for ongoing games)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
     try:
-        # ✅ CORRECCIÓN: usar client.games.get en lugar de client.bots.get_game
-        game = client.games.get(game_id)
+        # ✅ CORRECTO: usar client.bots.get_game para partidas en curso
+        game = client.bots.get_game(game_id)
         if not game:
             print(f"⚠️ Could not get game {game_id}")
             return
@@ -748,8 +748,8 @@ def play_game(game_id, client):
         board = None
 
         while True:
-            # ✅ CORRECCIÓN: usar client.games.get para el estado de la partida
-            game_state = client.games.get(game_id)
+            # ✅ CORRECTO: client.bots.get_game para estado actualizado
+            game_state = client.bots.get_game(game_id)
             if not game_state:
                 print(f"⚠️ Game {game_id} state not found")
                 break
@@ -813,78 +813,8 @@ def play_game(game_id, client):
     except Exception as e:
         print(f"⚠️ Error in game {game_id}: {e}")
         traceback.print_exc()
-
-# ============================================================
-# TOURNAMENT JOINING (original, unchanged)
-# ============================================================
-def join_tournaments(client, team_ids, max_tournaments=3):
-    joined = 0
-    for team_id in team_ids:
-        if joined >= max_tournaments:
-            break
-        try:
-            tournaments = client.teams.get_team_tournaments(team_id)
-            for tourney in tournaments:
-                if joined >= max_tournaments:
-                    break
-                if tourney.get('status') == 'created' and not tourney.get('isFinished'):
-                    try:
-                        client.tournaments.join(tourney['id'])
-                        print(f"✅ Joined tournament {tourney['id']} from team {team_id}")
-                        joined += 1
-                        time.sleep(2)
-                    except Exception as e:
-                        print(f"⚠️ Could not join tournament {tourney['id']}: {e}")
-                        traceback.print_exc()
-        except Exception as e:
-            print(f"⚠️ Could not fetch tournaments for team {team_id}: {e}")
-            traceback.print_exc()
-    return joined
-
-# ============================================================
-# SEEK PUBLISHING (original, unchanged)
-# ============================================================
-def publish_seeks(seek_token):
-    if not seek_token:
-        print("⚠️ No SEEK_TOKEN provided. Skipping seeks.")
-        return
-
-    headers = {"Authorization": f"Bearer {seek_token}"}
-    variants = ['standard', 'atomic', 'chess960', 'crazyhouse', 'antichess', 'threeCheck', 'racingKings']
-    speeds = ['classical', 'rapid', 'blitz', 'correspondence']
-
-    for variant in variants:
-        for speed in speeds:
-            try:
-                if speed == 'classical':
-                    time_min, increment = 1800, 0
-                elif speed == 'rapid':
-                    time_min, increment = 600, 0
-                elif speed == 'blitz':
-                    time_min, increment = 180, 0
-                else:  # correspondence
-                    time_min, increment = 86400, 0
-
-                payload = {
-                    "variant": variant,
-                    "time": time_min,
-                    "increment": increment,
-                    "days": 1 if speed == 'correspondence' else 0,
-                    "rated": False,
-                    "color": "random"
-                }
-                url = "https://lichess.org/api/board/seek"
-                resp = requests.post(url, headers=headers, json=payload, timeout=10)
-                if resp.status_code == 200:
-                    print(f"✅ Seek published: {variant} {speed}")
-                else:
-                    print(f"⚠️ Failed to publish seek {variant} {speed}: {resp.status_code}")
-                time.sleep(1)
-            except Exception as e:
-                print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
-                traceback.print_exc()
-                # ============================================================
-# MAIN LOOP (CORRECTED: uses client.games.get for manual search)
+        # ============================================================
+# MAIN LOOP (with manual search using client.bots.get_game)
 # ============================================================
 if __name__ == "__main__":
     session = berserk.TokenSession(LICHESS_TOKEN)
@@ -917,20 +847,20 @@ if __name__ == "__main__":
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
 
-                            # 🔍 MANUAL SEARCH: usar client.games.get directamente
+                            # 🔍 MANUAL SEARCH: usar client.bots.get_game con reintentos
                             found = False
                             for attempt in range(15):  # 15 intentos, 1 segundo entre cada uno
                                 time.sleep(1)
                                 try:
-                                    game = client.games.get(challenge['id'])
+                                    game = client.bots.get_game(challenge['id'])
                                     if game:
                                         print(f"🎮 Game found manually on attempt {attempt+1}: {challenge['id']}")
                                         play_game(challenge['id'], client)
                                         found = True
                                         break
                                 except Exception as e:
-                                    # Si el juego aún no existe, berserk lanza una excepción
-                                    # Simplemente continuamos el bucle
+                                    # Si el juego aún no existe, berserk lanza excepción
+                                    # Continuamos el bucle
                                     pass
                             if not found:
                                 print(f"⚠️ Could not find game {challenge['id']} after 15 attempts")
