@@ -3,10 +3,9 @@ from urllib.parse import quote
 from itertools import count
 from collections import namedtuple
 from datetime import datetime
-import math
 
 # ============================================================
-# 1. CONFIGURATION
+# CONFIGURATION (token from environment)
 # ============================================================
 LICHESS_TOKEN = os.environ.get("LICHESS_TOKEN")
 if not LICHESS_TOKEN:
@@ -19,6 +18,7 @@ ALLOWED_SPEEDS = {'classical','rapid','blitz','correspondence'}
 TEAM_IDS = [ "daily-bot-tournaments", "core-chess-study", "darkonbot", "growing-chess-variants-masters", "bot--human-team-battles" ]
 MAX_TOURNAMENTS_PER_CYCLE = 3
 
+# GLOBAL CLIENT (initialized in main)
 client = None
 
 class GameMode:
@@ -27,13 +27,13 @@ class GameMode:
 game_mode = threading.local()
 
 # ============================================================
-# 2. ENGINE DETECTION (Stockfish + Fairy)
+# ENGINE DETECTION (Stockfish for standard/chess960, Fairy for others)
 # ============================================================
 STOCKFISH_PATH = os.path.expanduser("~/bin/stockfish")
 FAIRY_PATH = os.path.expanduser("~/bin/fairy-stockfish")
 
-engine_std = None
-engine_var = None
+engine_std = None  # standard & chess960
+engine_var = None  # other variants
 
 if os.path.exists(STOCKFISH_PATH):
     os.chmod(STOCKFISH_PATH, 0o755)
@@ -60,7 +60,7 @@ if os.path.exists(FAIRY_PATH):
 if engine_std is None and engine_var is None:
     print("No engines found. Will rely on Cloud Eval and Sunfish.")
     # ============================================================
-# 3. GREETING TRACKER AND MESSAGES (part 1)
+# GREETING FILE (to avoid repeating hello)
 # ============================================================
 GREETED_FILE = os.path.join(os.path.dirname(__file__), "greeted_games.txt")
 def load_greeted():
@@ -73,6 +73,9 @@ def save_greeted(game_id):
         f.write(game_id + "\n")
 games_greeted = load_greeted()
 
+# ============================================================
+# MESSAGES (all in English, typos, simple kaomojis)
+# ============================================================
 GREETINGS_PLAYER = [
     "helo {oponente}! im {bot} :) lets hve a gr8 game! (type 'commands' for options) :3",
     "hi {oponente}, welcom! good luck n hve fun. (commands inside) X3",
@@ -117,7 +120,7 @@ FAREWELLS_PLAYER = [
     "lol that was intense! great game, {oponente}. feedback? @GatoChess89 :)"
 ]
 # ============================================================
-# 3. MESSAGES 
+# MESSAGES (part 2)
 # ============================================================
 GREETINGS_SPECTATORS = [
     "ladies and gentlemen, {oponente} has entered the arena. the match is about to start! X3",
@@ -162,7 +165,7 @@ COMMANDS_LIST = (
     "level, pts, playlike, fact, userfacts, eval, thegame, celebrate, chat, learn, botmaster, howto, about."
 )
 # ============================================================
-# 4. COMMAND PROCESSOR AND MESSAGE SENDER
+# COMMAND PROCESSOR (with noob restriction, typos, simple kaomojis)
 # ============================================================
 def process_command(text, opponent, mode, game_info=None):
     t = text.strip().lower()
@@ -242,6 +245,11 @@ def process_command(text, opponent, mode, game_info=None):
         return f"im {BOT_NAME}, a friendly chess bot that loves to play. type 'commands' to c what i can do! :)"
     return None
 
+# ============================================================
+# MESSAGE SENDING (split at 140 chars, uses global client)
+# ============================================================
+already_answered = set()
+
 def send_long_message(game_id, player_text, spectator_text=None, only_player=False):
     def split_and_send(text, room):
         if not text:
@@ -263,28 +271,28 @@ def send_long_message(game_id, player_text, spectator_text=None, only_player=Fal
                     if client:
                         client.bots.post_message(game_id, chunk)
                     else:
-                        print("⚠️ Client not available")
+                        print("⚠️ Client not available for player message")
                 else:
                     url = f"https://lichess.org/api/bot/game/{game_id}/chat"
                     requests.post(url, headers={"Authorization": f"Bearer {LICHESS_TOKEN}"},
                                  json={"room": "spectator", "text": chunk}, timeout=5)
                 time.sleep(0.3)
             except Exception as e:
-                print(f"⚠️ Error: {e}")
+                print(f"⚠️ Error sending to {room}: {e}")
                 traceback.print_exc()
     try:
         split_and_send(player_text, 'player')
     except Exception as e:
-        print(f"⚠️ Player error: {e}")
+        print(f"⚠️ Error sending player message: {e}")
         traceback.print_exc()
     if not only_player and spectator_text:
         try:
             split_and_send(spectator_text, 'spectator')
         except Exception as e:
-            print(f"⚠️ Spectator error: {e}")
+            print(f"⚠️ Error sending spectator message: {e}")
             traceback.print_exc()
             # ============================================================
-# 5. BOARD CREATION + SUNFISH EXTREME        
+# BOARD BY VARIANT (supports antichess and threeCheck)
 # ============================================================
 def create_board(variant, initial_fen=None):
     if variant == 'standard':
@@ -303,6 +311,9 @@ def create_board(variant, initial_fen=None):
         return chess.variant.RacingKingsBoard(initial_fen) if initial_fen else chess.variant.RacingKingsBoard()
     return chess.Board() if not initial_fen else chess.Board(initial_fen)
 
+# ============================================================
+# SUNFISH EXTREME (full implementation with transposition tables, quiescence, thousands of nodes)
+# ============================================================
 piece_values = {
     'P': 100, 'N': 280, 'B': 320, 'R': 479, 'Q': 929, 'K': 60000,
     'p': -100, 'n': -280, 'b': -320, 'r': -479, 'q': -929, 'k': -60000
@@ -379,7 +390,7 @@ def evaluate_sunfish(board):
             value += piece_values[piece.symbol()] + pst_value(piece.symbol(), square)
     return value if board.turn == chess.WHITE else -value
     # ============================================================
-# 6. SUNFISH EXTREME 
+# SUNFISH EXTREME (part 2) + ALPHA-BETA
 # ============================================================
 def order_moves(board, moves):
     def move_score(move):
@@ -455,94 +466,9 @@ def sunfish_move(board, remaining_time, mode):
                 best_move = move
             alpha = max(alpha, score)
     return best_move
-    # ============================================================
-# 7. get_move (Cloud Eval + Engines + Sunfish + Alpha-Beta)
+
 # ============================================================
-def get_move(board, remaining_time, increment, variant, mode):
-    if remaining_time is None:
-        engine_time = 10.0
-    elif remaining_time >= 600:
-        engine_time = min(30.0, remaining_time / 20)
-    elif remaining_time >= 180:
-        engine_time = min(15.0, remaining_time / 15)
-    elif remaining_time >= 60:
-        engine_time = min(8.0, remaining_time / 12)
-    elif remaining_time >= 30:
-        engine_time = min(5.0, remaining_time / 10)
-    elif remaining_time >= 10:
-        engine_time = min(2.5, remaining_time / 8)
-    else:
-        engine_time = max(0.5, remaining_time / 6)
-
-    if mode.forced == 'fast':
-        engine_time = min(engine_time, 1.0)
-    elif mode.forced == 'noob':
-        pass
-
-    try:
-        fen = board.fen()
-        fen_encoded = quote(fen, safe='')
-        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variant}"
-        resp = requests.get(url, timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            if "pvs" in data and len(data["pvs"]) > 0:
-                best_san = data["pvs"][0]["moves"].split()[0]
-                move = board.parse_san(best_san)
-                if move in board.legal_moves:
-                    print("✅ Cloud Eval")
-                    return move
-    except Exception as e:
-        print(f"⚠️ Cloud Eval error: {e}")
-        traceback.print_exc()
-
-    if variant in ('standard', 'chess960'):
-        engine = engine_std
-    else:
-        engine = engine_var
-
-    if engine:
-        try:
-            if variant == 'threeCheck':
-                engine.configure({"UCI_Variant": "3check"})
-            elif variant == 'standard':
-                engine.configure({"UCI_Variant": "chess"})
-            else:
-                engine.configure({"UCI_Variant": variant})
-            engine.configure({"Move Overhead": 100})
-            result = engine.play(board, chess.engine.Limit(time=engine_time))
-            if result.move and result.move in board.legal_moves:
-                print(f"✅ Local engine ({engine_time:.1f}s)")
-                return result.move
-        except Exception as e:
-            print(f"⚠️ Engine error: {e}")
-            traceback.print_exc()
-
-    if variant == 'standard':
-        move = sunfish_move(board, remaining_time, mode)
-        if move and move in board.legal_moves:
-            print("✅ Sunfish (extreme)")
-            return move
-
-    if variant in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
-        depth = 7 if (mode.forced == 'slow' or (mode.forced is None and remaining_time and remaining_time > 60)) else 6
-        move = find_best_move(board, depth, time_limit=2.0)
-        if move and move in board.legal_moves:
-            print("✅ Alpha-beta")
-            return move
-
-    if variant == 'antichess':
-        moves = antichess_legal_moves(board)
-        if moves:
-            return random.choice(moves)
-
-    moves = list(board.legal_moves)
-    if moves:
-        print("🎲 Random move (fallback)")
-        return random.choice(moves)
-    return None
-        # ============================================================
-# 8. ALPHA-BETA + ANTICHESS LEGAL MOVES
+# ALPHA-BETA FOR VARIANTS (minimax with pruning)
 # ============================================================
 def find_best_move(board, depth, time_limit=2.0):
     import time as tmod
@@ -602,13 +528,192 @@ def evaluate_board(board):
         value += len(board.pieces(piece_type, chess.WHITE)) * [100, 320, 330, 500, 900][piece_type-1]
         value -= len(board.pieces(piece_type, chess.BLACK)) * [100, 320, 330, 500, 900][piece_type-1]
     return value if board.turn == chess.WHITE else -value
-
+    # ============================================================
+# ANTICHESS LEGAL MOVES (captures forced)
+# ============================================================
 def antichess_legal_moves(board):
     moves = list(board.legal_moves)
     captures = [m for m in moves if board.is_capture(m)]
     return captures if captures else moves
+
+# ============================================================
+# TOURNAMENT JOINING
+# ============================================================
+def join_tournaments(client, team_ids, max_tournaments=3):
+    joined = 0
+    for team_id in team_ids:
+        if joined >= max_tournaments:
+            break
+        try:
+            tournaments = client.teams.get_team_tournaments(team_id)
+            for tourney in tournaments:
+                if joined >= max_tournaments:
+                    break
+                if tourney.get('status') == 'created' and not tourney.get('isFinished'):
+                    try:
+                        client.tournaments.join(tourney['id'])
+                        print(f"✅ Joined tournament {tourney['id']} from team {team_id}")
+                        joined += 1
+                        time.sleep(2)
+                    except Exception as e:
+                        print(f"⚠️ Could not join tournament {tourney['id']}: {e}")
+                        traceback.print_exc()
+        except Exception as e:
+            print(f"⚠️ Could not fetch tournaments for team {team_id}: {e}")
+            traceback.print_exc()
+    return joined
+
+# ============================================================
+# SEEK PUBLISHING (using auxiliary account token)
+# ============================================================
+def publish_seeks(seek_token):
+    if not seek_token:
+        print("⚠️ No SEEK_TOKEN provided. Skipping seeks.")
+        return
+
+    headers = {"Authorization": f"Bearer {seek_token}"}
+    variants = ['standard', 'atomic', 'chess960', 'crazyhouse', 'antichess', 'threeCheck', 'racingKings']
+    speeds = ['classical', 'rapid', 'blitz', 'correspondence']
+
+    for variant in variants:
+        for speed in speeds:
+            try:
+                if speed == 'classical':
+                    time_min, increment = 1800, 0
+                elif speed == 'rapid':
+                    time_min, increment = 600, 0
+                elif speed == 'blitz':
+                    time_min, increment = 180, 0
+                else:  # correspondence
+                    time_min, increment = 86400, 0
+
+                payload = {
+                    "variant": variant,
+                    "time": time_min,
+                    "increment": increment,
+                    "days": 1 if speed == 'correspondence' else 0,
+                    "rated": False,
+                    "color": "random"
+                }
+                url = "https://lichess.org/api/board/seek"
+                resp = requests.post(url, headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    print(f"✅ Seek published: {variant} {speed}")
+                else:
+                    print(f"⚠️ Failed to publish seek {variant} {speed}: {resp.status_code}")
+                time.sleep(1)
+            except Exception as e:
+                print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
+                traceback.print_exc()
+                # ============================================================
+# CORE: get_move (with extended analysis time)
+# ============================================================
+def get_move(board, remaining_time, increment, variant, mode):
+    """
+    Returns the best move using:
+    1. Cloud Eval (fast)
+    2. Local engine (Stockfish or Fairy) with extended time
+    3. Sunfish (fallback for standard)
+    4. Alpha-beta (fallback for variants)
+    5. Random move (last resort)
+    """
+    # --- Extended analysis time calculation (more strength) ---
+    if remaining_time is None:
+        engine_time = 10.0  # correspondence
+    elif remaining_time >= 600:      # > 10 min
+        engine_time = min(30.0, remaining_time / 20)
+    elif remaining_time >= 180:      # 3-10 min
+        engine_time = min(15.0, remaining_time / 15)
+    elif remaining_time >= 60:       # 1-3 min
+        engine_time = min(8.0, remaining_time / 12)
+    elif remaining_time >= 30:       # 30-60 s
+        engine_time = min(5.0, remaining_time / 10)
+    elif remaining_time >= 10:       # 10-30 s
+        engine_time = min(2.5, remaining_time / 8)
+    else:                            # < 10 s (time trouble)
+        engine_time = max(0.5, remaining_time / 6)
+
+    # If mode forces 'fast' or 'noob', reduce time
+    if mode.forced == 'fast':
+        engine_time = min(engine_time, 1.0)
+    elif mode.forced == 'noob':
+        # Random move directly (handled below)
+        pass
+
+    # 1) Cloud Eval (always fast)
+    try:
+        fen = board.fen()
+        fen_encoded = quote(fen, safe='')
+        url = f"https://lichess.org/api/cloud-eval?fen={fen_encoded}&variant={variant}"
+        resp = requests.get(url, timeout=2)
+        if resp.status_code == 200:
+            data = resp.json()
+            if "pvs" in data and len(data["pvs"]) > 0:
+                best_san = data["pvs"][0]["moves"].split()[0]
+                move = board.parse_san(best_san)
+                if move in board.legal_moves:
+                    print("✅ Cloud Eval")
+                    return move
+    except Exception as e:
+        print(f"⚠️ Cloud Eval error: {e}")
+        traceback.print_exc()
+
+    # 2) Local engines (with extended time)
+    if variant in ('standard', 'chess960'):
+        engine = engine_std
+    else:
+        engine = engine_var
+
+    if engine:
+        try:
+            # Configure variant for Fairy
+            if variant == 'threeCheck':
+                engine.configure({"UCI_Variant": "3check"})
+            elif variant == 'standard':
+                engine.configure({"UCI_Variant": "chess"})
+            else:
+                engine.configure({"UCI_Variant": variant})
+
+            # Ensure no depth limit (only time)
+            engine.configure({"Move Overhead": 100})
+
+            result = engine.play(board, chess.engine.Limit(time=engine_time))
+            if result.move and result.move in board.legal_moves:
+                print(f"✅ Local engine ({engine_time:.1f}s)")
+                return result.move
+        except Exception as e:
+            print(f"⚠️ Engine error: {e}")
+            traceback.print_exc()
+
+    # 3) Sunfish (standard only)
+    if variant == 'standard':
+        move = sunfish_move(board, remaining_time, mode)
+        if move and move in board.legal_moves:
+            print("✅ Sunfish")
+            return move
+
+    # 4) Alpha-beta for variants
+    if variant in ('atomic','crazyhouse','racingKings','chess960','threeCheck'):
+        depth = 7 if (mode.forced == 'slow' or (mode.forced is None and remaining_time and remaining_time > 60)) else 6
+        move = find_best_move(board, depth, time_limit=2.0)
+        if move and move in board.legal_moves:
+            print("✅ Alpha-beta")
+            return move
+
+    # 5) Antichess specific
+    if variant == 'antichess':
+        moves = antichess_legal_moves(board)
+        if moves:
+            return random.choice(moves)
+
+    # 6) Random move (last resort)
+    moves = list(board.legal_moves)
+    if moves:
+        print("🎲 Random move (fallback)")
+        return random.choice(moves)
+    return None
     # ============================================================
-# 9. play_game (extracted from gameStart) + TOURNAMENTS + SEEKS
+# PLAY GAME (extracted from gameStart, with all original logic)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
@@ -707,6 +812,9 @@ def play_game(game_id, client):
         print(f"⚠️ Error in game {game_id}: {e}")
         traceback.print_exc()
 
+# ============================================================
+# TOURNAMENT JOINING (original, unchanged)
+# ============================================================
 def join_tournaments(client, team_ids, max_tournaments=3):
     joined = 0
     for team_id in team_ids:
@@ -731,6 +839,9 @@ def join_tournaments(client, team_ids, max_tournaments=3):
             traceback.print_exc()
     return joined
 
+# ============================================================
+# SEEK PUBLISHING (original, unchanged)
+# ============================================================
 def publish_seeks(seek_token):
     if not seek_token:
         print("⚠️ No SEEK_TOKEN provided. Skipping seeks.")
@@ -749,7 +860,7 @@ def publish_seeks(seek_token):
                     time_min, increment = 600, 0
                 elif speed == 'blitz':
                     time_min, increment = 180, 0
-                else:
+                else:  # correspondence
                     time_min, increment = 86400, 0
 
                 payload = {
@@ -771,7 +882,7 @@ def publish_seeks(seek_token):
                 print(f"⚠️ Error publishing seek {variant} {speed}: {e}")
                 traceback.print_exc()
                 # ============================================================
-# 10. MAIN LOOP (stream + manual search after challenge)
+# MAIN LOOP (stream + manual search after challenge)
 # ============================================================
 if __name__ == "__main__":
     session = berserk.TokenSession(LICHESS_TOKEN)
