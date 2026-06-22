@@ -778,11 +778,17 @@ def play_game(game_id, client):
 
                 # Update board
                 fen = event.get('fen')
-                if fen and board:
-                    board.set_fen(fen)
+                if fen:
+    if board is None:
+        # Initialize board from this fen
+        board = create_board(variant, fen)
+    else:
+        board.set_fen(fen)
 
                 # Check if it's bot's turn
-                bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
+                if board is None:
+                   continue
+bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
                 if not bot_turn:
                     continue
 
