@@ -710,13 +710,12 @@ def get_move(board, remaining_time, increment, variant, mode):
         print("🎲 Random move (fallback)")
         return random.choice(moves)
     return None
-   # ============================================================
-# PLAY GAME (uses stream_game_state correctly - ONE stream per game)
+    # ============================================================
+# PLAY GAME (CORRECTED INDENTATION)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
     try:
-        # Open the stream ONCE and keep it open
         board = None
         mode = GameMode()
         game_mode.forced = None
@@ -726,8 +725,6 @@ def play_game(game_id, client):
         game_state = None
         greeted = False
 
-        # This loop processes events as they come from the stream
-        # It does NOT poll - it's a continuous stream
         for event in client.bots.stream_game_state(game_id):
             event_type = event.get('type')
             
@@ -741,7 +738,6 @@ def play_game(game_id, client):
                 is_white = players.get('white', {}).get('username') == BOT_NAME
                 print(f"✅ Game {game_id}: {variant} vs {opponent}")
 
-                # Send greeting ONCE
                 if game_id not in games_greeted and not greeted:
                     try:
                         greeting_player = random.choice(GREETINGS_PLAYER).format(opponent=opponent, bot=BOT_NAME)
@@ -754,7 +750,6 @@ def play_game(game_id, client):
                         print(f"⚠️ Error sending greeting: {e}")
                         traceback.print_exc()
 
-                # Initialize board
                 fen = game_state.get('fen')
                 if fen:
                     board = create_board(variant, fen)
@@ -763,7 +758,6 @@ def play_game(game_id, client):
                 if game_state is None:
                     continue
 
-                # Check if game ended
                 if event.get('status') != 'started':
                     if game_id in games_greeted:
                         try:
@@ -776,23 +770,20 @@ def play_game(game_id, client):
                     print(f"🏁 Game {game_id} finished")
                     break
 
-                # Update board
                 fen = event.get('fen')
                 if fen:
-    if board is None:
-        # Initialize board from this fen
-        board = create_board(variant, fen)
-    else:
-        board.set_fen(fen)
+                    if board is None:
+                        board = create_board(variant, fen)
+                    else:
+                        board.set_fen(fen)
 
-                # Check if it's bot's turn
                 if board is None:
-                   continue
-bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
+                    continue
+
+                bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.turn == chess.BLACK)
                 if not bot_turn:
                     continue
 
-                # Get remaining time
                 remaining_time = None
                 if is_white:
                     wtime = event.get('wtime')
@@ -805,7 +796,6 @@ bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.t
 
                 increment = event.get('winc') or event.get('binc') or 0
 
-                # Make a move
                 try:
                     move = get_move(board, remaining_time, increment, variant, mode)
                     if move:
@@ -818,13 +808,13 @@ bot_turn = (is_white and board.turn == chess.WHITE) or (not is_white and board.t
                 except Exception as e:
                     print(f"⚠️ Error making move: {e}")
                     traceback.print_exc()
-                    # Small delay to avoid hammering the API on error
                     time.sleep(0.5)
 
     except Exception as e:
         print(f"⚠️ Error in game {game_id}: {e}")
         traceback.print_exc()
-        # ============================================================
+
+# ============================================================
 # MAIN LOOP (with proper stream usage - NO polling)
 # ============================================================
 if __name__ == "__main__":
@@ -844,8 +834,6 @@ if __name__ == "__main__":
 
     while True:
         try:
-            # This is a STREAM - it stays open and delivers events
-            # Do NOT poll this endpoint - it's meant to be streamed[reference:2]
             stream = client.bots.stream_incoming_events()
             for event in stream:
                 event_type = event.get('type')
@@ -859,7 +847,6 @@ if __name__ == "__main__":
                         try:
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
-                            # Play the game - stream_game_state will handle it
                             play_game(challenge['id'], client)
                         except Exception as e:
                             print(f"⚠️ Could not accept challenge: {e}")
@@ -883,11 +870,9 @@ if __name__ == "__main__":
                     if game_id:
                         print(f"🏁 Game {game_id} finished (event)")
 
-            # If the stream closes, we reconnect
             print("⚠️ Stream closed, reconnecting...")
 
         except berserk.exceptions.ResponseError as e:
-            # If we get a 429 despite using streams correctly, wait 5 seconds (not 60)
             if '429' in str(e):
                 print("⚠️ Rate limit hit (429). Waiting 5 seconds...")
                 time.sleep(5)
@@ -902,5 +887,3 @@ if __name__ == "__main__":
             print(f"⚠️ Error: {e}")
             traceback.print_exc()
             time.sleep(5)
-
-                    
