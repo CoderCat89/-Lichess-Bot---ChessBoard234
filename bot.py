@@ -74,77 +74,75 @@ def save_greeted(game_id):
 games_greeted = load_greeted()
 
 # ============================================================
-# MESSAGES (all in English, typos, simple kaomojis)
+# MESSAGES
 # ============================================================
 GREETINGS_PLAYER = [
-    "helo {oponente}! im {bot} :) lets hve a gr8 game! (type 'commands' for options) :3",
-    "hi {oponente}, welcom! good luck n hve fun. (commands inside) X3",
-    "greetings, {oponente}. i hope u enjoy our match. (type commands for help) :)",
-    "welcome, {oponente}! im redy to play. (commands availabel) :3",
-    "hi {oponente}! lets c who plays bettr today. (commands for tips) X3",
-    "hello {oponente}! may the best player win. (type commands for options) :)",
-    "welcome, {oponente}. im happy to play with u. (commands list) :3",
-    "hey {oponente}, nice to meet u on the board! (type commands) X3",
-    "hi {oponente}! lets mak this an excitin game. (commands = more) :)"
+    "helo {opponent}! im {bot} :) lets hve a gr8 game! (type 'commands' for options) :3",
+    "hi {opponent}, welcom! good luck n hve fun. (commands inside) X3",
+    "greetings, {opponent}. i hope u enjoy our match. (type commands for help) :)",
+    "welcome, {opponent}! im redy to play. (commands availabel) :3",
+    "hi {opponent}! lets c who plays bettr today. (commands for tips) X3",
+    "hello {opponent}! may the best player win. (type commands for options) :)",
+    "welcome, {opponent}. im happy to play with u. (commands list) :3",
+    "hey {opponent}, nice to meet u on the board! (type commands) X3",
+    "hi {opponent}! lets mak this an excitin game. (commands = more) :)"
 ]
 
 RESPONSES_PLAYER = [
-    "ha! my circuits r tinglin with that, {oponente}. now lets c if ur moves tingle aswell :P :3",
-    "interestin, {oponente}. i'l add that to my database of 'human weirdness'. :o",
-    "u talk the talk, {oponente}, but can u walk the board? X3",
-    "if words were moves, u'd be grandmaster, {oponente}. but they arnt. :)",
-    "im listenin, {oponente}. but my processor is busy calculatin ur defeat. :3",
-    "oh, {oponente}, ur almost as entertainin as a glitched toaster. X3",
-    "i apreciate the chat, {oponente}. it makes crushin u more enjoyabl. just kiddin... or not. :)",
-    "shh... im thinkin 20 moves ahead. but i can still hear u, {oponente}. :3",
-    "ur funny, {oponente}. but the board is callin. lets dance! X3",
-    "note to self: {oponente} talks more than my hash table can store. :o",
-    "lol {oponente}, that was funny! now focus, we hve a game to finish :P",
-    "gg {oponente}! oh wait, the game isnt over yet. my bad :)",
-    "hello {oponente}! i c ur still typing. less chat, more chess! X3",
+    "ha! my circuits r tinglin with that, {opponent}. now lets c if ur moves tingle aswell :P :3",
+    "interestin, {opponent}. i'l add that to my database of 'human weirdness'. :o",
+    "u talk the talk, {opponent}, but can u walk the board? X3",
+    "if words were moves, u'd be grandmaster, {opponent}. but they arnt. :)",
+    "im listenin, {opponent}. but my processor is busy calculatin ur defeat. :3",
+    "oh, {opponent}, ur almost as entertainin as a glitched toaster. X3",
+    "i apreciate the chat, {opponent}. it makes crushin u more enjoyabl. just kiddin... or not. :)",
+    "shh... im thinkin 20 moves ahead. but i can still hear u, {opponent}. :3",
+    "ur funny, {opponent}. but the board is callin. lets dance! X3",
+    "note to self: {opponent} talks more than my hash table can store. :o",
+    "lol {opponent}, that was funny! now focus, we hve a game to finish :P",
+    "gg {opponent}! oh wait, the game isnt over yet. my bad :)",
+    "hello {opponent}! i c ur still typing. less chat, more chess! X3",
     "u sed hi, i say bye... to ur pieces! :3"
 ]
 
 FAREWELLS_PLAYER = [
-    "good game, {oponente}! i realy enjoyed it. c u soon! if u hve feedback or find a bug, tell @GatoChess89 :) :3",
-    "well played, {oponente}. that was a pleasure. (bugs? suggestions? -> @GatoChess89) X3",
-    "thx for the game, {oponente}. come back anytime! (feedback to @GatoChess89 plz) :)",
-    "that was a lot of fun! take care, {oponente}. (report bugs to @GatoChess89) :3",
-    "gg! im loggin off now. stay safe, {oponente}. (thoughts? @GatoChess89) X3",
-    "game over. u were a worthy opponent, {oponente}. respect! (feedback welcome @GatoChess89) :)",
-    "i hve to go now. goodbye, {oponente}! (tell @GatoChess89 if i did well) :3",
-    "even a bot needs rest. farewell, {oponente}! (send suggestions to @GatoChess89) X3",
+    "good game, {opponent}! i realy enjoyed it. c u soon! if u hve feedback or find a bug, tell @GatoChess89 :) :3",
+    "well played, {opponent}. that was a pleasure. (bugs? suggestions? -> @GatoChess89) X3",
+    "thx for the game, {opponent}. come back anytime! (feedback to @GatoChess89 plz) :)",
+    "that was a lot of fun! take care, {opponent}. (report bugs to @GatoChess89) :3",
+    "gg! im loggin off now. stay safe, {opponent}. (thoughts? @GatoChess89) X3",
+    "game over. u were a worthy opponent, {opponent}. respect! (feedback welcome @GatoChess89) :)",
+    "i hve to go now. goodbye, {opponent}! (tell @GatoChess89 if i did well) :3",
+    "even a bot needs rest. farewell, {opponent}! (send suggestions to @GatoChess89) X3",
     "good game! if u hve any feedback or suggestions, tell @GatoChess89. take care! :)",
-    "bye {oponente}! that was fun. remember, feedback goes to @GatoChess89 :3",
-    "gg wp {oponente}! if u found a bug, plz tell @GatoChess89 X3",
-    "lol that was intense! great game, {oponente}. feedback? @GatoChess89 :)"
+    "bye {opponent}! that was fun. remember, feedback goes to @GatoChess89 :3",
+    "gg wp {opponent}! if u found a bug, plz tell @GatoChess89 X3",
+    "lol that was intense! great game, {opponent}. feedback? @GatoChess89 :)"
              ]
-# ============================================================
-# MESSAGES (part 2)
-# ============================================================
+
 GREETINGS_SPECTATORS = [
-    "ladies and gentlemen, {oponente} has entered the arena. the match is about to start! X3",
-    "spectators, welcome! {bot} vs {oponente} begins now. :)",
-    "grab ur popcorn, folks. {oponente} is facin {bot}! :3",
-    "hello, chess fans! today's game: {oponente} against {bot}. X3",
+    "ladies and gentlemen, {opponent} has entered the arena. the match is about to start! X3",
+    "spectators, welcome! {bot} vs {opponent} begins now. :)",
+    "grab ur popcorn, folks. {opponent} is facin {bot}! :3",
+    "hello, chess fans! today's game: {opponent} against {bot}. X3",
     "the game is on! lets c who will win today. :)",
-    "everyone, welcome to the {bot} show. today's guest: {oponente}. :3",
-    "the board is set. {bot} and {oponente} are ready. X3",
-    "welcome to the arena! {oponente} vs {bot} – enjoy! :)",
+    "everyone, welcome to the {bot} show. today's guest: {opponent}. :3",
+    "the board is set. {bot} and {opponent} are ready. X3",
+    "welcome to the arena! {opponent} vs {bot} – enjoy! :)",
     "dear spectators, a new challenge begins. good luck to both players! :3"
 ]
 
 RESPONSES_SPECTATORS = [
-    "spectators, note how {oponente} tries to distract me with words. cute, isnt it? X3",
-    "the audience can c that {oponente}'s keyboard is mightier than their bishop. :)",
-    "i hope ur enjoyin the show, folks. {oponente} is providin excellent entertainment. :3",
-    "for the record, dear spectators, {oponente} started the trash talk. im just a humble bot. X3",
-    "while {oponente} is chattin, im calculatin my next masterpiece. :)",
-    "spectators, {oponente} thinks they hve a chance. adorable. :3",
-    "the crowd goes wild... with laughter at {oponente}'s comment. just kiddin, i cant hear u. X3",
-    "id respond with a witty comeback, but im too busy winnin this game. {oponente} understands. :)",
-    "lol did u hear that, spectators? {oponente} is a comedian X3",
-    "hello audience! {oponente} sed something funny. lets all laugh together :P"
+    "spectators, note how {opponent} tries to distract me with words. cute, isnt it? X3",
+    "the audience can c that {opponent}'s keyboard is mightier than their bishop. :)",
+    "i hope ur enjoyin the show, folks. {opponent} is providin excellent entertainment. :3",
+    "for the record, dear spectators, {opponent} started the trash talk. im just a humble bot. X3",
+    "while {opponent} is chattin, im calculatin my next masterpiece. :)",
+    "spectators, {opponent} thinks they hve a chance. adorable. :3",
+    "the crowd goes wild... with laughter at {opponent}'s comment. just kiddin, i cant hear u. X3",
+    "id respond with a witty comeback, but im too busy winnin this game. {opponent} understands. :)",
+    "lol did u hear that, spectators? {opponent} is a comedian X3",
+    "hello audience! {opponent} sed something funny. lets all laugh together :P"
 ]
 
 FAREWELLS_SPECTATORS = [
