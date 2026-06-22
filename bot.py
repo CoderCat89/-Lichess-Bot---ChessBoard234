@@ -713,22 +713,28 @@ def get_move(board, remaining_time, increment, variant, mode):
         return random.choice(moves)
     return None
     # ============================================================
-# PLAY GAME (uses client.games.export with as_pgn=False)
+# PLAY GAME (uses client.bots.stream_game_state for ongoing games)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
     try:
-        # Get game as JSON (not PGN string)
-        game = client.games.export(game_id, as_pgn=False)
-        if not game:
+        # Get initial game state as JSON using stream_game_state
+        game_state = None
+        for event in client.bots.stream_game_state(game_id):
+            if event['type'] == 'gameFull':
+                game_state = event
+                break
+        
+        if not game_state:
             print(f"⚠️ Could not get game {game_id}")
             return
 
-        variant = game.get('variant', {}).get('key', 'standard')
-        speed = game.get('speed', 'blitz')
-        opponent = game.get('players', {}).get('black', {}).get('username', 'opponent')
+        variant = game_state.get('variant', {}).get('key', 'standard')
+        speed = game_state.get('speed', 'blitz')
+        players = game_state.get('players', {})
+        opponent = players.get('black', {}).get('username', 'opponent')
         if opponent == BOT_NAME:
-            opponent = game.get('players', {}).get('white', {}).get('username', 'opponent')
+            opponent = players.get('white', {}).get('username', 'opponent')
 
         print(f"✅ Game {game_id}: {variant} vs {opponent}")
 
@@ -748,13 +754,21 @@ def play_game(game_id, client):
         board = None
 
         while True:
-            # Get updated game state as JSON
-            game_state = client.games.export(game_id, as_pgn=False)
-            if not game_state:
+            # Get updated game state using stream_game_state
+            new_state = None
+            for event in client.bots.stream_game_state(game_id):
+                if event['type'] == 'gameState':
+                    new_state = event
+                    break
+                elif event['type'] == 'gameFull':
+                    new_state = event
+                    break
+            
+            if not new_state:
                 print(f"⚠️ Game {game_id} state not found")
                 break
 
-            if game_state.get('status') != 'started':
+            if new_state.get('status') != 'started':
                 if game_id in games_greeted:
                     try:
                         farewell_player = random.choice(FAREWELLS_PLAYER).format(opponent=opponent)
@@ -766,7 +780,7 @@ def play_game(game_id, client):
                 print(f"🏁 Game {game_id} finished")
                 break
 
-            fen = game_state.get('fen')
+            fen = new_state.get('fen')
             if not fen:
                 time.sleep(1)
                 continue
@@ -784,15 +798,15 @@ def play_game(game_id, client):
 
             remaining_time = None
             if is_white:
-                wtime = game_state.get('clock', {}).get('remaining')
+                wtime = new_state.get('wtime')
                 if wtime:
                     remaining_time = wtime / 1000
             else:
-                btime = game_state.get('clock', {}).get('remaining')
+                btime = new_state.get('btime')
                 if btime:
                     remaining_time = btime / 1000
 
-            increment = game_state.get('clock', {}).get('increment', 0)
+            increment = new_state.get('winc') or new_state.get('binc') or 0
 
             try:
                 move = get_move(board, remaining_time, increment, variant, mode)
@@ -814,7 +828,7 @@ def play_game(game_id, client):
         print(f"⚠️ Error in game {game_id}: {e}")
         traceback.print_exc()
         # ============================================================
-# MAIN LOOP (with manual search using client.games.export as JSON)
+# MAIN LOOP (with manual search using client.bots.stream_game_state)
 # ============================================================
 if __name__ == "__main__":
     session = berserk.TokenSession(LICHESS_TOKEN)
@@ -847,19 +861,20 @@ if __name__ == "__main__":
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
 
-                            # Manual search with retries (up to 15 seconds)
+                            # Manual search using stream_game_state
                             found = False
                             for attempt in range(15):
                                 time.sleep(1)
                                 try:
-                                    game = client.games.export(challenge['id'], as_pgn=False)
-                                    if game:
-                                        print(f"🎮 Game found manually on attempt {attempt+1}: {challenge['id']}")
-                                        play_game(challenge['id'], client)
-                                        found = True
+                                    for state_event in client.bots.stream_game_state(challenge['id']):
+                                        if state_event.get('type') in ('gameFull', 'gameState'):
+                                            print(f"🎮 Game found manually on attempt {attempt+1}: {challenge['id']}")
+                                            play_game(challenge['id'], client)
+                                            found = True
+                                            break
+                                    if found:
                                         break
                                 except Exception:
-                                    # Game not ready yet, continue
                                     pass
                             if not found:
                                 print(f"⚠️ Could not find game {challenge['id']} after 15 attempts")
