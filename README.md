@@ -38,7 +38,7 @@ ChessBoard234 can play **Standard, Chess960, Atomic, Crazyhouse, Racing Kings, A
 - **Chat personality** – replies with human‑like typos, kaomojis (｡•́︿•̀｡) and humour.
 - **Custom commands** – `commands`, `slow`, `fast`, `pro`, `noob`, `play`, `leaderboard`, `formula`, `comment`, `ct`, `weather`, `time`, `level`, `pts`, `playlike`, `fact`, `userfacts`, `eval`, `thegame`, `celebrate`, `chat`, `learn`, `botmaster`, `howto`, `about`.
 - **Greetings & farewells** – says hello when a game starts and goodbye when it ends, both to the opponent and to spectators.
-- **Runs 24/7** – thanks to a GitHub Actions workflow that launches the bot every 6 hours for 5.5 hours straight, ensuring near‑continuous uptime.
+- **Runs 24/7** – thanks to a GitHub Actions workflow that launches the bot every 6 hours for 5.9 hours straight, ensuring near‑continuous uptime.
 - **Open source** – you can fork the repo and run your own copy with just a Lichess token.
 
 ---
