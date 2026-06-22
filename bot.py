@@ -713,13 +713,13 @@ def get_move(board, remaining_time, increment, variant, mode):
         return random.choice(moves)
     return None
     # ============================================================
-# PLAY GAME (uses client.bots.get_game for ongoing games)
+# PLAY GAME (uses client.games.export for ongoing games)
 # ============================================================
 def play_game(game_id, client):
     print(f"🎮 Processing game {game_id}")
     try:
-        # ✅ CORRECTO: usar client.bots.get_game para partidas en curso
-        game = client.bots.get_game(game_id)
+        # ✅ CORRECCIÓN DEFINITIVA: usar client.games.export
+        game = client.games.export(game_id)
         if not game:
             print(f"⚠️ Could not get game {game_id}")
             return
@@ -748,8 +748,8 @@ def play_game(game_id, client):
         board = None
 
         while True:
-            # ✅ CORRECTO: client.bots.get_game para estado actualizado
-            game_state = client.bots.get_game(game_id)
+            # ✅ CORRECCIÓN DEFINITIVA: client.games.export para estado actualizado
+            game_state = client.games.export(game_id)
             if not game_state:
                 print(f"⚠️ Game {game_id} state not found")
                 break
@@ -814,7 +814,7 @@ def play_game(game_id, client):
         print(f"⚠️ Error in game {game_id}: {e}")
         traceback.print_exc()
         # ============================================================
-# MAIN LOOP (with manual search using client.bots.get_game)
+# MAIN LOOP (with manual search using client.games.export)
 # ============================================================
 if __name__ == "__main__":
     session = berserk.TokenSession(LICHESS_TOKEN)
@@ -847,12 +847,12 @@ if __name__ == "__main__":
                             client.bots.accept_challenge(challenge['id'])
                             print(f"✅ Challenge accepted: {variant} {speed}")
 
-                            # 🔍 MANUAL SEARCH: usar client.bots.get_game con reintentos
+                            # 🔍 MANUAL SEARCH: usar client.games.export con reintentos
                             found = False
                             for attempt in range(15):  # 15 intentos, 1 segundo entre cada uno
                                 time.sleep(1)
                                 try:
-                                    game = client.bots.get_game(challenge['id'])
+                                    game = client.games.export(challenge['id'])
                                     if game:
                                         print(f"🎮 Game found manually on attempt {attempt+1}: {challenge['id']}")
                                         play_game(challenge['id'], client)
@@ -897,3 +897,4 @@ if __name__ == "__main__":
             print(f"⚠️ Error: {e}")
             traceback.print_exc()
             time.sleep(10)
+                            
