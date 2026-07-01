@@ -25,10 +25,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p $HOME/bin
-          apt-get update -qq && apt-get install -y stockfish 2>&1 | tail -1
-          cp /usr/games/stockfish $HOME/bin/stockfish || cp /usr/bin/stockfish $HOME/bin/stockfish || echo "⚠️ Stockfish via apt fallback"
-          chmod +x $HOME/bin/stockfish
-          echo "✅ Stockfish installed"
+          sudo apt-get update -qq
+          sudo apt-get install -y stockfish 2>&1 | tail -1
+          sudo cp /usr/games/stockfish $HOME/bin/stockfish 2>/dev/null || sudo cp /usr/bin/stockfish $HOME/bin/stockfish 2>/dev/null || echo "⚠️ Stockfish not found"
+          sudo chmod +x $HOME/bin/stockfish 2>/dev/null || echo "⚠️ Chmod failed"
+          echo "✅ Stockfish setup attempted"
 
       - name: Download and install Fairy-Stockfish
         shell: bash
@@ -36,17 +37,12 @@ jobs:
           mkdir -p $HOME/bin
           BIN_URL="https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-largeboard_x86-64"
           echo "Downloading Fairy-Stockfish..."
-          wget -q "$BIN_URL" -O fairy-stockfish 2>&1 || curl -sL "$BIN_URL" -o fairy-stockfish
-          if [ ! -f fairy-stockfish ]; then
-            echo "⚠️ Failed to download Fairy-Stockfish, but continuing..."
+          wget -q "$BIN_URL" -O $HOME/bin/fairy-stockfish 2>&1 || curl -sL "$BIN_URL" -o $HOME/bin/fairy-stockfish
+          if [ -f $HOME/bin/fairy-stockfish ]; then
+            chmod +x $HOME/bin/fairy-stockfish
+            echo "✅ Fairy-Stockfish installed"
           else
-            if file fairy-stockfish | grep -q "ELF"; then
-              cp fairy-stockfish $HOME/bin/fairy-stockfish
-              chmod +x $HOME/bin/fairy-stockfish
-              echo "✅ Fairy-Stockfish installed"
-            else
-              echo "⚠️ Downloaded file invalid, skipping"
-            fi
+            echo "⚠️ Fairy-Stockfish download failed, continuing anyway"
           fi
 
       - name: Run the bot
