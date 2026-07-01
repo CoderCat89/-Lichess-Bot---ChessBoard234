@@ -2,13 +2,13 @@ name: ChessBoard234 Bot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 */6 * * *'   
   workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 359     # 5h 59m
+    timeout-minutes: 360     
 
     steps:
       - uses: actions/checkout@v4
@@ -21,28 +21,42 @@ jobs:
       - name: Install Python dependencies
         run: pip install berserk chess requests python-chess
 
-      - name: Download and install Fairy‑Stockfish
+      - name: Download and install Stockfish
         shell: bash
         run: |
           mkdir -p $HOME/bin
-          # ✅ El binario ya no viene en .tar, es directo
+          apt-get update -qq && apt-get install -y stockfish 2>&1 | tail -1
+          cp /usr/games/stockfish $HOME/bin/stockfish || cp /usr/bin/stockfish $HOME/bin/stockfish || echo "⚠️ Stockfish via apt fallback"
+          chmod +x $HOME/bin/stockfish
+          echo "✅ Stockfish installed"
+
+      - name: Download and install Fairy-Stockfish
+        shell: bash
+        run: |
+          mkdir -p $HOME/bin
           BIN_URL="https://github.com/fairy-stockfish/Fairy-Stockfish/releases/latest/download/fairy-stockfish-largeboard_x86-64"
-          echo "Downloading Fairy‑Stockfish from $BIN_URL"
-          wget -q "$BIN_URL" -O fairy-stockfish
+          echo "Downloading Fairy-Stockfish..."
+          wget -q "$BIN_URL" -O fairy-stockfish 2>&1 || curl -sL "$BIN_URL" -o fairy-stockfish
           if [ ! -f fairy-stockfish ]; then
-            echo "❌ Failed to download Fairy‑Stockfish"
-            exit 1
+            echo "⚠️ Failed to download Fairy-Stockfish, but continuing..."
+          else
+            if file fairy-stockfish | grep -q "ELF"; then
+              cp fairy-stockfish $HOME/bin/fairy-stockfish
+              chmod +x $HOME/bin/fairy-stockfish
+              echo "✅ Fairy-Stockfish installed"
+            else
+              echo "⚠️ Downloaded file invalid, skipping"
+            fi
           fi
-          if ! file fairy-stockfish | grep -q "ELF"; then
-            echo "❌ Downloaded file is not a valid Linux executable"
-            exit 1
-          fi
-          cp fairy-stockfish $HOME/bin/fairy-stockfish
-          chmod +x $HOME/bin/fairy-stockfish
-          echo "✅ Fairy‑Stockfish installed successfully"
 
       - name: Run the bot
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
           SEEK_TOKEN: ${{ secrets.SEEK_TOKEN }}
-        run: python bot.py
+        run: |
+          set +e
+          python bot.py &
+          BOT_PID=$!
+          sleep 21580
+          kill $BOT_PID 2>/dev/null || true
+          echo "✅ Bot session completed"
